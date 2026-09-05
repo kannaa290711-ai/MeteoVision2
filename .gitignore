@@ -1,0 +1,23 @@
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+# Python / Virtual Envs
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Logs & Environment
+*.log
+.env
+.env.local
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

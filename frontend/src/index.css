@@ -1,0 +1,104 @@
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  /* Warm Charcoal Enterprise Dark Theme */
+  --bg-dark: #141419;
+  --bg-surface: #1c1c22;
+  --bg-surface-elevated: #24242c;
+  --border-color: #2c2c36;
+  --border-subtle: #24242e;
+  
+  --text-primary: #e8e8ea;
+  --text-secondary: #9c9ca4;
+  --text-tertiary: #6c6c74;
+  
+  /* Singular Warm Copper / Amber Accent */
+  --accent-primary: #d98e4a;
+  --accent-primary-hover: #e69b55;
+  --accent-primary-bg: rgba(217, 142, 74, 0.12);
+  
+  /* Muted Enterprise Status Tiers */
+  --status-healthy: #6b9e78;
+  --status-healthy-bg: rgba(107, 158, 120, 0.14);
+  --status-watch: #c9a85b;
+  --status-watch-bg: rgba(201, 168, 91, 0.14);
+  --status-degraded: #c97b4a;
+  --status-degraded-bg: rgba(201, 123, 74, 0.14);
+  --status-critical: #b85c5c;
+  --status-critical-bg: rgba(184, 92, 92, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Minimalist Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: #2e2e38;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3e3e4a;
+}
+
+/* Leaflet Map Enterprise Dark Theme */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #101014 !important;
+  font-family: inherit;
+}
+
+.leaflet-tile {
+  filter: brightness(0.65) invert(1) contrast(1.2) hue-rotate(180deg) saturate(0.2) !important;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  border-radius: 8px !important;
+}
+
+/* Pulsing Station Markers */
+.custom-map-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Utility Layout Classes */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  grid-template-rows: auto 1fr;
+  height: calc(100vh - 64px);
+  gap: 16px;
+  padding: 16px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+    height: auto;
+  }
+}
