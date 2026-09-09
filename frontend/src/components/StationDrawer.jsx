@@ -276,6 +276,49 @@ export default function StationDrawer({ station, onClose }) {
         </div>
       )}
 
+      {/* Field Technician Dispatch Work Order Payload Card */}
+      <div style={{
+        backgroundColor: "#141419",
+        borderRadius: "8px",
+        border: "1px solid #2c2c36",
+        borderLeft: "4px solid #3b82f6",
+        padding: "12px 14px",
+        marginBottom: "14px"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+          <div style={{ fontSize: "12px", fontWeight: "700", color: "#e8e8ea", display: "flex", alignItems: "center", gap: "6px" }}>
+            <Database size={15} color="#3b82f6" /> Technician Dispatch Payload
+          </div>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: "#3b82f6", backgroundColor: "rgba(59, 130, 246, 0.15)", padding: "2px 8px", borderRadius: "8px" }}>
+            WO-2026-AWS-{station.station_id.slice(-3)}
+          </span>
+        </div>
+
+        <div style={{ fontSize: "11px", color: "#9c9ca4", marginBottom: "8px" }}>
+          Automated field work order containing GPS target coordinates, fault diagnosis, required RTD/barometer replacement parts, and SMS/WhatsApp payload.
+        </div>
+
+        <div style={{ display: "flex", gap: "6px" }}>
+          <button
+            onClick={() => alert(`DISPATCH SIMULATED:\n\nPayload sent to field crew for ${station.name} (${station.station_id})!\nTarget: ${activeTab.toUpperCase()} Sensor Element.\nLat/Lon: ${station.lat}, ${station.lon}`)}
+            style={{
+              flex: 1,
+              padding: "6px 10px",
+              backgroundColor: "#3b82f6",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "4px",
+              fontSize: "11px",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+          >
+            Dispatch Field Crew (SMS / Webhook)
+          </button>
+        </div>
+      </div>
+
       {/* Telemetry Display Mode Selector */}
       <div style={{
         display: "flex",

@@ -51,6 +51,18 @@ export const fetchEdgeStatus = async (stationId) => {
   return response.data;
 };
 
+export const fetchSatelliteVerification = async (stationId, score = 0.0) => {
+  const response = await api.get(`/satellite/verify/${stationId}`, {
+    params: { score },
+  });
+  return response.data;
+};
+
+export const fetchWorkOrders = async () => {
+  const response = await api.get("/dispatch/work-orders");
+  return response.data;
+};
+
 export const subscribeTelemetryStream = (onData, onError) => {
   const streamUrl = `${API_BASE_URL}/stream/telemetry`;
   const eventSource = new EventSource(streamUrl);

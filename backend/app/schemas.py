@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 class SensorHealthScoreSchema(BaseModel):
     id: int
@@ -166,4 +166,29 @@ class EdgeNodeStatusSchema(BaseModel):
     bandwidth_saving_pct: float = 71.4
     edge_self_healing_active: bool = True
     status: str = "ONLINE"
+
+
+class SatelliteVerificationSchema(BaseModel):
+    station_id: str
+    satellite_source: str = "ISRO INSAT-3D / 3DR (TIR-1 Channel)"
+    concordance_pct: float
+    cloud_top_temp_k: float
+    status_label: str
+    synoptic_front_confirmed: bool
+
+
+class TechnicianWorkOrderSchema(BaseModel):
+    work_order_id: str
+    station_id: str
+    station_name: str
+    coordinates: Dict[str, float]
+    target_variable: str
+    health_score: float
+    rul_remaining_days: int
+    urgency: str
+    recommended_spares: List[str]
+    required_tools: List[str]
+    field_notes: str
+    dispatch_json_payload: Dict[str, Any]
+
 

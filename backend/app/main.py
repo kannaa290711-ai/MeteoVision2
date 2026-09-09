@@ -12,7 +12,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from backend.app.database import get_db, engine, Base
 from backend.app.schemas import (
     StationSchema, ReadingHistorySchema, AlertSchema, EvaluationMetricsSchema,
-    LineageRecordSchema, SensorHealthScoreSchema, PredictiveHealthSchema, EdgeNodeStatusSchema
+    LineageRecordSchema, SensorHealthScoreSchema, PredictiveHealthSchema, EdgeNodeStatusSchema,
+    SatelliteVerificationSchema, TechnicianWorkOrderSchema
 )
 from backend.app.crud import (
     get_all_stations_with_status, get_station_history, get_recent_alerts,
@@ -82,6 +83,20 @@ def get_station_edge_status(station_id: str):
     """Return simulated ESP32 Edge-AI microcontroller status, RAM/flash footprint, and sub-ms latency metrics."""
     from backend.app.crud import get_edge_node_status
     return get_edge_node_status(station_id)
+
+
+@app.get("/api/satellite/verify/{station_id}", response_model=SatelliteVerificationSchema)
+def get_satellite_cross_verification(station_id: str, score: float = Query(default=0.0), db: Session = Depends(get_db)):
+    """Return ISRO INSAT-3D / 3DR Thermal Infrared cloud top verification for an AWS ground station."""
+    from backend.app.crud import get_satellite_verification
+    return get_satellite_verification(db, station_id, combined_score=score)
+
+
+@app.get("/api/dispatch/work-orders", response_model=List[TechnicianWorkOrderSchema])
+def list_technician_work_orders(db: Session = Depends(get_db)):
+    """Return structured JSON / SMS maintenance work orders for field technician dispatch."""
+    from backend.app.crud import get_technician_work_orders
+    return get_technician_work_orders(db)
 
 
 @app.get("/api/alerts", response_model=List[AlertSchema])

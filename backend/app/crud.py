@@ -293,3 +293,17 @@ def get_edge_node_status(station_id: str):
         "status": "ONLINE"
     }
 
+
+from satellite_verifier import verify_with_insat3d
+from technician_dispatch import generate_technician_work_orders
+
+def get_satellite_verification(db: Session, station_id: str, combined_score: float = 0.0):
+    """Return ISRO INSAT-3D / 3DR satellite cross-validation results for ground station."""
+    return verify_with_insat3d(station_id, combined_score=combined_score, db=db)
+
+
+def get_technician_work_orders(db: Session):
+    """Return structured JSON / SMS field technician dispatch maintenance work orders for degraded stations."""
+    return generate_technician_work_orders(db=db)
+
+
