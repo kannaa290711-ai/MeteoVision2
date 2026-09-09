@@ -108,7 +108,7 @@ export default function AlertFeed({ alerts = [], onSelectStation }) {
         gap: "10px"
       }}>
         {filteredAlerts.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "30px 10px", color="#6c6c74", fontSize: "12px" }}>
+          <div style={{ textAlign: "center", padding: "30px 10px", color: "#6c6c74", fontSize: "12px" }}>
             No recent anomaly events matching query.
           </div>
         ) : (

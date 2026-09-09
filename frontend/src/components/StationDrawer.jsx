@@ -213,6 +213,7 @@ export default function StationDrawer({ station, onClose }) {
           <div style={{ fontSize: "17px", fontWeight: "700", color: "#e8e8ea", marginTop: "4px" }}>
             {station.latest_pressure !== null ? `${station.latest_pressure} hPa` : "N/A"}
           </div>
+        </div>
       </div>
 
       {/* Predictive Degradation & RUL Forecast Card */}
