@@ -270,3 +270,26 @@ def get_sensor_health_details(db: Session, station_id: str):
         }
         for s in scores
     ]
+
+
+from predictive_degradation import compute_predictive_degradation
+
+def get_predictive_health_forecast(db: Session, station_id: str):
+    """Return RUL (Remaining Useful Life) and health score decay forecast (+7d, +14d, +30d) per variable."""
+    return compute_predictive_degradation(station_id, db=db)
+
+
+def get_edge_node_status(station_id: str):
+    """Return simulated ESP32 Edge-AI microcontroller status, RAM/flash footprint, and sub-ms latency metrics."""
+    return {
+        "station_id": station_id,
+        "firmware_version": "v2.1-ESP32-EdgeAI",
+        "architecture": "Xtensa LX6 (Dual-Core @ 240MHz)",
+        "edge_inference_latency_ms": 0.022,
+        "ram_usage_kb": 18.4,
+        "flash_usage_kb": 64.2,
+        "bandwidth_saving_pct": 71.4,
+        "edge_self_healing_active": True,
+        "status": "ONLINE"
+    }
+

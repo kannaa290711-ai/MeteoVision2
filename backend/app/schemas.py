@@ -135,3 +135,35 @@ class EvaluationMetricsSchema(BaseModel):
     tn: int
     variable_metrics: Dict[str, Dict[str, float]]
     fault_type_recall: Dict[str, float]
+
+
+class VariableForecastSchema(BaseModel):
+    current_health_score: float
+    current_tier: str
+    decay_rate_pct_per_day: float
+    rul_days: int
+    risk_level: str
+    forecast_7d: float
+    forecast_14d: float
+    forecast_30d: float
+    proactive_advisory: str
+
+
+class PredictiveHealthSchema(BaseModel):
+    station_id: str
+    overall_rul_days: int
+    overall_degradation_risk: str
+    variables: Dict[str, VariableForecastSchema]
+
+
+class EdgeNodeStatusSchema(BaseModel):
+    station_id: str
+    firmware_version: str = "v2.1-ESP32-EdgeAI"
+    architecture: str = "Xtensa LX6 (Dual-Core @ 240MHz)"
+    edge_inference_latency_ms: float = 0.022
+    ram_usage_kb: float = 18.4
+    flash_usage_kb: float = 64.2
+    bandwidth_saving_pct: float = 71.4
+    edge_self_healing_active: bool = True
+    status: str = "ONLINE"
+

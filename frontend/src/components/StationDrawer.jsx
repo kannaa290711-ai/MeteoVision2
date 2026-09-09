@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { X, Thermometer, Droplets, Gauge, CheckCircle, Calendar, ShieldCheck, Zap, Info, Activity, Database } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { fetchStationHistory, fetchSensorHealth, fetchAlerts } from "../api";
+import { fetchStationHistory, fetchSensorHealth, fetchAlerts, fetchPredictiveHealth } from "../api";
 
 export default function StationDrawer({ station, onClose }) {
   const [activeTab, setActiveTab] = useState("temperature");
   const [telemetryMode, setTelemetryMode] = useState("healed"); // "raw", "healed", "overlay"
   const [historyData, setHistoryData] = useState([]);
   const [sensorHealthScores, setSensorHealthScores] = useState([]);
+  const [predictiveHealth, setPredictiveHealth] = useState(null);
   const [alertsMap, setAlertsMap] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -18,9 +19,10 @@ export default function StationDrawer({ station, onClose }) {
     Promise.all([
       fetchStationHistory(station.station_id, 7),
       fetchSensorHealth(station.station_id).catch(() => []),
-      fetchAlerts(100).catch(() => [])
+      fetchAlerts(100).catch(() => []),
+      fetchPredictiveHealth(station.station_id).catch(() => null)
     ])
-      .then(([histData, healthData, allAlerts]) => {
+      .then(([histData, healthData, allAlerts, predData]) => {
         // Map backend XAI explanation narratives by (station_id, timestamp, variable)
         const aMap = {};
         allAlerts.forEach((a) => {
@@ -43,6 +45,7 @@ export default function StationDrawer({ station, onClose }) {
         }));
         setHistoryData(formatted);
         setSensorHealthScores(healthData);
+        setPredictiveHealth(predData);
       })
       .catch((err) => console.error("Error fetching station analytics:", err))
       .finally(() => setLoading(false));
@@ -210,8 +213,68 @@ export default function StationDrawer({ station, onClose }) {
           <div style={{ fontSize: "17px", fontWeight: "700", color: "#e8e8ea", marginTop: "4px" }}>
             {station.latest_pressure !== null ? `${station.latest_pressure} hPa` : "N/A"}
           </div>
-        </div>
       </div>
+
+      {/* Predictive Degradation & RUL Forecast Card */}
+      {predictiveHealth && (
+        <div style={{
+          backgroundColor: "#141419",
+          borderRadius: "8px",
+          border: "1px solid #2c2c36",
+          borderLeft: `4px solid ${
+            predictiveHealth.overall_degradation_risk === "CRITICAL" ? "#b85c5c" :
+            predictiveHealth.overall_degradation_risk === "ELEVATED" ? "#c97b4a" :
+            predictiveHealth.overall_degradation_risk === "MODERATE" ? "#c9a85b" : "#6b9e78"
+          }`,
+          padding: "12px 14px",
+          marginBottom: "14px"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "700", color: "#e8e8ea" }}>
+              <Activity size={15} color="#d98e4a" /> Predictive Health & Remaining Useful Life (RUL)
+            </div>
+            <span style={{
+              fontSize: "10px",
+              fontWeight: "700",
+              padding: "2px 8px",
+              borderRadius: "10px",
+              backgroundColor: predictiveHealth.overall_degradation_risk === "CRITICAL" ? "rgba(184, 92, 92, 0.2)" : "rgba(107, 158, 120, 0.2)",
+              color: predictiveHealth.overall_degradation_risk === "CRITICAL" ? "#f87171" : "#4ade80",
+              border: `1px solid ${predictiveHealth.overall_degradation_risk === "CRITICAL" ? "rgba(184, 92, 92, 0.4)" : "rgba(107, 158, 120, 0.4)"}`
+            }}>
+              RUL: {predictiveHealth.overall_rul_days} Days ({predictiveHealth.overall_degradation_risk} RISK)
+            </span>
+          </div>
+
+          {predictiveHealth.variables && predictiveHealth.variables[activeTab] && (
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", fontSize: "11px", margin: "8px 0" }}>
+                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>Current</div>
+                  <strong style={{ color: "#e8e8ea", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].current_health_score}%</strong>
+                </div>
+                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>+7 Days</div>
+                  <strong style={{ color: "#c9a85b", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].forecast_7d}%</strong>
+                </div>
+                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>+14 Days</div>
+                  <strong style={{ color: "#c97b4a", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].forecast_14d}%</strong>
+                </div>
+                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>+30 Days</div>
+                  <strong style={{ color: "#b85c5c", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].forecast_30d}%</strong>
+                </div>
+              </div>
+
+              <div style={{ fontSize: "11px", color: "#9c9ca4", backgroundColor: "#1c1c22", padding: "6px 10px", borderRadius: "6px", border: "1px solid #2c2c36", marginTop: "6px" }}>
+                <strong style={{ color: "#d98e4a" }}>Proactive Advisory: </strong>
+                {predictiveHealth.variables[activeTab].proactive_advisory}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Telemetry Display Mode Selector */}
       <div style={{

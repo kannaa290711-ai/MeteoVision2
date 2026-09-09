@@ -41,6 +41,16 @@ export const fetchMetrics = async () => {
   return response.data;
 };
 
+export const fetchPredictiveHealth = async (stationId) => {
+  const response = await api.get(`/sensor-health/predictive/${stationId}`);
+  return response.data;
+};
+
+export const fetchEdgeStatus = async (stationId) => {
+  const response = await api.get(`/edge/status/${stationId}`);
+  return response.data;
+};
+
 export const subscribeTelemetryStream = (onData, onError) => {
   const streamUrl = `${API_BASE_URL}/stream/telemetry`;
   const eventSource = new EventSource(streamUrl);

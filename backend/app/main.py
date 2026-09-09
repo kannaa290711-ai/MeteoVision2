@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from backend.app.database import get_db, engine, Base
 from backend.app.schemas import (
     StationSchema, ReadingHistorySchema, AlertSchema, EvaluationMetricsSchema,
-    LineageRecordSchema, SensorHealthScoreSchema
+    LineageRecordSchema, SensorHealthScoreSchema, PredictiveHealthSchema, EdgeNodeStatusSchema
 )
 from backend.app.crud import (
     get_all_stations_with_status, get_station_history, get_recent_alerts,
@@ -68,6 +68,20 @@ def get_station_sensor_health(station_id: str, db: Session = Depends(get_db)):
     if not scores:
         raise HTTPException(status_code=404, detail="Station not found or no health score data available")
     return scores
+
+
+@app.get("/api/sensor-health/predictive/{station_id}", response_model=PredictiveHealthSchema)
+def get_station_predictive_health(station_id: str, db: Session = Depends(get_db)):
+    """Return Remaining Useful Life (RUL) and health score decay forecast (+7d, +14d, +30d) for a station."""
+    from backend.app.crud import get_predictive_health_forecast
+    return get_predictive_health_forecast(db, station_id)
+
+
+@app.get("/api/edge/status/{station_id}", response_model=EdgeNodeStatusSchema)
+def get_station_edge_status(station_id: str):
+    """Return simulated ESP32 Edge-AI microcontroller status, RAM/flash footprint, and sub-ms latency metrics."""
+    from backend.app.crud import get_edge_node_status
+    return get_edge_node_status(station_id)
 
 
 @app.get("/api/alerts", response_model=List[AlertSchema])
