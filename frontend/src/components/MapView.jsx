@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import { Thermometer, Droplets, Gauge, Wind, CloudRain, Cpu, Info, ChevronRight } from "lucide-react";
+import { Thermometer, Droplets, Gauge, Wind, CloudRain, Cpu, Info, ChevronRight, AlertCircle } from "lucide-react";
 
 const getTierColor = (tier) => {
   switch (tier) {
