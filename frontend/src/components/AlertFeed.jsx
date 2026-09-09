@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AlertCircle, Search, ChevronRight, Info } from "lucide-react";
+import { AlertCircle, Search, Info, Cpu, Layers } from "lucide-react";
 
 export default function AlertFeed({ alerts = [], onSelectStation }) {
   const [filterVar, setFilterVar] = useState("ALL");
@@ -108,12 +108,13 @@ export default function AlertFeed({ alerts = [], onSelectStation }) {
         gap: "10px"
       }}>
         {filteredAlerts.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "30px 10px", color: "#6c6c74", fontSize: "12px" }}>
+          <div style={{ textAlign: "center", padding: "30px 10px", color="#6c6c74", fontSize: "12px" }}>
             No recent anomaly events matching query.
           </div>
         ) : (
           filteredAlerts.map((alert) => {
             const faultColor = getFaultColor(alert.predicted_fault_type);
+            const mvScorePct = alert.multivariate_consistency_score !== null ? (alert.multivariate_consistency_score * 100).toFixed(0) : null;
             return (
               <div
                 key={alert.id}
@@ -180,6 +181,44 @@ export default function AlertFeed({ alerts = [], onSelectStation }) {
                   }}>
                     <Info size={12} color="#3b82f6" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
                     {alert.explanation_text}
+                  </div>
+                )}
+
+                {/* SHAP Feature Importance Attribution */}
+                {alert.shap_summary && (
+                  <div style={{
+                    fontSize: "10px",
+                    color: "#3b82f6",
+                    backgroundColor: "rgba(59, 130, 246, 0.1)",
+                    border: "1px solid rgba(59, 130, 246, 0.25)",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    marginTop: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}>
+                    <Cpu size={12} color="#3b82f6" />
+                    <strong>SHAP Attribution:</strong> {alert.shap_summary}
+                  </div>
+                )}
+
+                {/* Multivariate Consistency Score Tag */}
+                {mvScorePct !== null && (
+                  <div style={{
+                    fontSize: "10px",
+                    color: mvScorePct > 50 ? "#6b9e78" : "#c97b4a",
+                    backgroundColor: mvScorePct > 50 ? "rgba(107, 158, 120, 0.1)" : "rgba(201, 123, 74, 0.1)",
+                    border: `1px solid ${mvScorePct > 50 ? "rgba(107, 158, 120, 0.25)" : "rgba(201, 123, 74, 0.25)"}`,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    marginTop: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}>
+                    <Layers size={11} />
+                    <strong>Multivariate Consistency:</strong> {mvScorePct}% ({mvScorePct > 50 ? "Correlated Weather Front" : "Isolated Sensor Fault"})
                   </div>
                 )}
 

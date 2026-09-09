@@ -88,6 +88,11 @@ class AlertSchema(BaseModel):
     imputation_confidence: Optional[float] = None
     physics_check_passed: Optional[bool] = None
     status_label: str = "Flagged — Under Review"
+    # SHAP Explainability additions
+    shap_contributions: Optional[Dict[str, float]] = None
+    shap_summary: Optional[str] = None
+    # Multivariate consistency score
+    multivariate_consistency_score: Optional[float] = None
 
 
 class LineageRecordSchema(BaseModel):
@@ -114,6 +119,10 @@ class LineageRecordSchema(BaseModel):
     physics_check_details: Optional[str]
     status_label: str
     xai_explanation: Optional[str]
+    # SHAP Explainability & Multivariate additions
+    shap_contributions: Optional[Dict[str, float]] = None
+    shap_summary: Optional[str] = None
+    multivariate_consistency_score: Optional[float] = None
 
 
 class EvaluationMetricsSchema(BaseModel):

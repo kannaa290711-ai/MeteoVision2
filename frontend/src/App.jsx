@@ -7,7 +7,7 @@ import StationDrawer from "./components/StationDrawer";
 import AlertFeed from "./components/AlertFeed";
 import WeatherPatternView from "./components/WeatherPatternView";
 import FutureVisionView from "./components/FutureVisionView";
-import { fetchStations, fetchAlerts, fetchMetrics } from "./api";
+import { fetchStations, fetchAlerts, fetchMetrics, subscribeTelemetryStream } from "./api";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard", "weather-risk", "roadmap"
@@ -16,6 +16,7 @@ export default function App() {
   const [metrics, setMetrics] = useState(null);
   const [selectedStationId, setSelectedStationId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isStreaming, setIsStreaming] = useState(true);
 
   const loadDashboardData = async () => {
     try {
@@ -37,7 +38,37 @@ export default function App() {
   useEffect(() => {
     loadDashboardData();
     const interval = setInterval(loadDashboardData, 12000);
-    return () => clearInterval(interval);
+
+    // Live Telemetry SSE Stream Subscription
+    let unsubscribeStream = null;
+    try {
+      unsubscribeStream = subscribeTelemetryStream((newStreamItem) => {
+        setIsStreaming(true);
+        if (newStreamItem.flagged) {
+          setAlerts((prevAlerts) => [
+            {
+              id: Date.now(),
+              station_id: newStreamItem.station_id,
+              station_name: newStreamItem.station_name,
+              variable: "temperature",
+              timestamp: newStreamItem.timestamp,
+              raw_value: newStreamItem.temperature,
+              predicted_fault_type: newStreamItem.fault_type,
+              shap_summary: newStreamItem.shap_summary,
+              multivariate_consistency_score: newStreamItem.multivariate_consistency_score
+            },
+            ...prevAlerts.slice(0, 49)
+          ]);
+        }
+      });
+    } catch (err) {
+      console.warn("Real-time SSE stream unavailable, relying on interval polling:", err);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (unsubscribeStream) unsubscribeStream();
+    };
   }, []);
 
   const activeAnomaliesCount = stations.filter((s) => s.status === "ANOMALY").length;

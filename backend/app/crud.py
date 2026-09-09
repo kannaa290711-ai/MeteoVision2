@@ -1,7 +1,13 @@
+import os
+import sys
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from datetime import datetime, timedelta
 from .models import Station, RawReading, AnomalyFlag, GroundTruthFault, ImputedReading, SensorHealthScore, XAINarrative
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../analysis-engine")))
+from shap_explainer import compute_shap_breakdown
+from multivariate_analyzer import compute_multivariate_consistency
 
 def get_all_stations_with_status(db: Session):
     stations = db.query(Station).all()
@@ -130,7 +136,7 @@ def get_station_history(db: Session, station_id: str, days: int = 7):
 
 
 def get_recent_alerts(db: Session, limit: int = 50):
-    flags = db.query(AnomalyFlag, Station.name.label("station_name")).join(
+    flags = db.query(AnomalyFlag, Station.name.label("station_name"), Station.elevation_m).join(
         Station, AnomalyFlag.station_id == Station.station_id
     ).filter(
         AnomalyFlag.flagged == True,
@@ -138,9 +144,24 @@ def get_recent_alerts(db: Session, limit: int = 50):
     ).order_by(desc(AnomalyFlag.timestamp)).limit(limit).all()
     
     alerts = []
-    for f, st_name in flags:
+    for f, st_name, elev_m in flags:
         narrative = db.query(XAINarrative).filter(XAINarrative.flag_id == f.id).first()
         imputed = db.query(ImputedReading).filter(ImputedReading.flag_id == f.id).first()
+        
+        # Calculate SHAP breakdown
+        feature_dict = {
+            "temporal_score": float(f.temporal_score),
+            "spatial_score": float(f.spatial_score),
+            "frozen_score": float(getattr(f, "frozen_score", 0.0)),
+            "drift_score": float(getattr(f, "drift_score", 0.0)),
+            "neighbor_agreement": float(getattr(f, "neighbor_agreement", 1.0)),
+            "hour_of_day": int(f.timestamp.hour),
+            "elevation_m": float(elev_m or 500.0)
+        }
+        shap_res = compute_shap_breakdown(feature_dict)
+        
+        # Calculate Multivariate Consistency Score
+        mv_score, _ = compute_multivariate_consistency(db, f.station_id, f.timestamp, f.variable, f.combined_score)
         
         alerts.append({
             "id": f.id,
@@ -162,7 +183,11 @@ def get_recent_alerts(db: Session, limit: int = 50):
             "imputation_method": imputed.imputation_method if imputed else None,
             "imputation_confidence": imputed.imputation_confidence if imputed else None,
             "physics_check_passed": imputed.physics_check_passed if imputed else None,
-            "status_label": imputed.status_label if imputed else "Flagged — Under Review"
+            "status_label": imputed.status_label if imputed else "Flagged — Under Review",
+            # SHAP & Multivariate additions
+            "shap_contributions": shap_res["feature_contributions"],
+            "shap_summary": shap_res["top_drivers"],
+            "multivariate_consistency_score": mv_score
         })
     return alerts
 
@@ -174,12 +199,30 @@ def get_data_lineage(db: Session, flag_id: int):
         
     st = db.query(Station).filter(Station.station_id == flag.station_id).first()
     st_name = st.name if st else flag.station_id
+    elev_m = st.elevation_m if st else 500.0
     
     reading = db.query(RawReading).filter(RawReading.id == flag.reading_id).first() if flag.reading_id else None
     raw_val = getattr(reading, flag.variable, None) if reading else None
     
     imputed = db.query(ImputedReading).filter(ImputedReading.flag_id == flag_id).first()
     narrative = db.query(XAINarrative).filter(XAINarrative.flag_id == flag_id).first()
+    
+    # Calculate SHAP breakdown & Multivariate consistency
+    feature_dict = {
+        "temporal_score": float(flag.temporal_score),
+        "spatial_score": float(flag.spatial_score),
+        "frozen_score": float(getattr(flag, "frozen_score", 0.0)),
+        "drift_score": float(getattr(flag, "drift_score", 0.0)),
+        "neighbor_agreement": float(getattr(flag, "neighbor_agreement", 1.0)),
+        "hour_of_day": int(flag.timestamp.hour),
+        "elevation_m": float(elev_m)
+    }
+    shap_res = compute_shap_breakdown(feature_dict)
+    mv_score, mv_clause = compute_multivariate_consistency(db, flag.station_id, flag.timestamp, flag.variable, flag.combined_score)
+    
+    # Combine explanation with multivariate clause
+    base_explanation = narrative.explanation_text if narrative else ""
+    full_explanation = f"{base_explanation} {mv_clause}".strip()
     
     return {
         "flag_id": flag.id,
@@ -204,7 +247,10 @@ def get_data_lineage(db: Session, flag_id: int):
         "physics_check_passed": imputed.physics_check_passed if imputed else None,
         "physics_check_details": imputed.physics_check_details if imputed else None,
         "status_label": imputed.status_label if imputed else ("Flagged — Under Review" if flag.flagged else "Raw / Verified"),
-        "xai_explanation": narrative.explanation_text if narrative else None
+        "xai_explanation": full_explanation,
+        "shap_contributions": shap_res["feature_contributions"],
+        "shap_summary": shap_res["top_drivers"],
+        "multivariate_consistency_score": mv_score
     }
 
 

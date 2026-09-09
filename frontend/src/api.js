@@ -41,4 +41,25 @@ export const fetchMetrics = async () => {
   return response.data;
 };
 
+export const subscribeTelemetryStream = (onData, onError) => {
+  const streamUrl = `${API_BASE_URL}/stream/telemetry`;
+  const eventSource = new EventSource(streamUrl);
+  
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (onData) onData(data);
+    } catch (err) {
+      console.error("Failed to parse telemetry stream event:", err);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.warn("SSE telemetry stream warning/reconnecting:", err);
+    if (onError) onError(err);
+  };
+
+  return () => eventSource.close();
+};
+
 export default api;

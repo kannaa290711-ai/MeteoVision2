@@ -85,6 +85,41 @@ def get_anomaly_data_lineage(flag_id: int, db: Session = Depends(get_db)):
     return lineage
 
 
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
+from backend.app.models import RawReading, AnomalyFlag, Station
+
+@app.get("/api/stream/telemetry")
+async def stream_telemetry(speed_sec: float = Query(default=1.0, ge=0.1, le=10.0), db: Session = Depends(get_db)):
+    """Server-Sent Events (SSE) endpoint to stream simulated incoming AWS telemetry readings live with SHAP & multivariate metrics."""
+    async def event_generator():
+        readings = db.query(RawReading).order_by(RawReading.timestamp.desc()).limit(100).all()
+        for rd in reversed(readings):
+            st = db.query(Station).filter(Station.station_id == rd.station_id).first()
+            flag = db.query(AnomalyFlag).filter(
+                AnomalyFlag.station_id == rd.station_id,
+                AnomalyFlag.timestamp == rd.timestamp
+            ).first()
+            
+            payload = {
+                "station_id": rd.station_id,
+                "station_name": st.name if st else rd.station_id,
+                "timestamp": rd.timestamp.isoformat(),
+                "temperature": rd.temperature,
+                "humidity": rd.humidity,
+                "pressure": rd.pressure,
+                "flagged": flag.flagged if flag else False,
+                "fault_type": flag.predicted_fault_type if flag else "none",
+                "shap_summary": getattr(flag, "shap_summary", None) if flag else None,
+                "multivariate_consistency_score": float(getattr(flag, "multivariate_consistency_score", 1.0)) if flag else 1.0
+            }
+            yield f"data: {json.dumps(payload)}\n\n"
+            await asyncio.sleep(speed_sec)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 _cached_metrics = None
 
 @app.get("/api/metrics/evaluation")
