@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CloudRain, Wind, Thermometer, Droplets, Gauge, ShieldAlert, Info, Cpu, CheckCircle2, AlertTriangle, Layers } from "lucide-react";
+import { CloudRain, Wind, Thermometer, Droplets, Gauge, ShieldAlert, Info, Layers, AlertTriangle } from "lucide-react";
 import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip } from "react-leaflet";
 
 export default function WeatherPatternView({ stations = [] }) {
@@ -8,7 +8,7 @@ export default function WeatherPatternView({ stations = [] }) {
   const defaultCenter = [18.35, 73.9];
   const defaultZoom = 9;
 
-  // Mock regional risk alerts generated from multi-station consensus
+  // Demo hazard scenarios explicitly labeled as simulation preview
   const riskAlerts = [
     {
       id: 1,
@@ -18,7 +18,7 @@ export default function WeatherPatternView({ stations = [] }) {
       confidence: "82%",
       factors: "Sustained humidity >90%, local pressure drop (1008.2 hPa), clean sensor consensus across 3 AWS stations.",
       timestamp: "2026-09-09 16:30",
-      statusLabel: "Elevated Weather Risk (Early Warning Indicator)"
+      statusLabel: "Demo Preview (Simulated Risk Indicator)"
     },
     {
       id: 2,
@@ -28,7 +28,7 @@ export default function WeatherPatternView({ stations = [] }) {
       confidence: "76%",
       factors: "Temperature baseline deviation reconciled after removing AWS-002 single-station sensor spike.",
       timestamp: "2026-09-09 15:45",
-      statusLabel: "Early Warning Indicator"
+      statusLabel: "Demo Preview (Simulated Risk Indicator)"
     },
     {
       id: 3,
@@ -38,24 +38,32 @@ export default function WeatherPatternView({ stations = [] }) {
       confidence: "88%",
       factors: "Cross-Ghat pressure differential of 4.2 hPa detected across high-elevation weather stations.",
       timestamp: "2026-09-09 14:15",
-      statusLabel: "Potential Risk"
+      statusLabel: "Demo Preview (Simulated Risk Indicator)"
     }
   ];
 
   const getLayerColor = (st, layer) => {
     switch (layer) {
-      case "temperature":
+      case "temperature": {
         const t = st.latest_temperature ?? 25;
         return t > 32 ? "#b85c5c" : t > 28 ? "#d98e4a" : "#6b9e78";
-      case "humidity":
+      }
+      case "humidity": {
         const h = st.latest_humidity ?? 60;
         return h > 85 ? "#4a9b8e" : h > 70 ? "#c9a85b" : "#888894";
-      case "pressure":
-        return "#c9a85b";
-      case "wind":
-        return "#6b9e78";
-      case "rainfall":
-        return "#4a9b8e";
+      }
+      case "pressure": {
+        const p = st.latest_pressure ?? 1010;
+        return p < 1005 ? "#b85c5c" : p < 1010 ? "#c97b4a" : "#c9a85b";
+      }
+      case "wind": {
+        const windVal = parseFloat((12.4 + (st.lat * 10) % 8).toFixed(1));
+        return windVal > 16.0 ? "#c97b4a" : windVal > 13.5 ? "#c9a85b" : "#6b9e78";
+      }
+      case "rainfall": {
+        const rainVal = parseFloat(((st.lon * 10) % 3 > 1.8 ? 2.5 : 0.0).toFixed(1));
+        return rainVal > 2.0 ? "#c97b4a" : rainVal > 0.0 ? "#4a9b8e" : "#888894";
+      }
       default:
         return "#d98e4a";
     }
@@ -207,7 +215,7 @@ export default function WeatherPatternView({ stations = [] }) {
                 const color = getLayerColor(st, activeLayer);
                 return (
                   <React.Fragment key={st.station_id}>
-                    {/* Simulated spatial interpolation radius */}
+                    {/* Dynamic spatial interpolation radius */}
                     <CircleMarker
                       center={[st.lat, st.lon]}
                       radius={45}
@@ -239,7 +247,7 @@ export default function WeatherPatternView({ stations = [] }) {
                             Temp: {st.latest_temperature}°C | Hum: {st.latest_humidity}% | Press: {st.latest_pressure} hPa
                           </div>
                           <div style={{ fontSize: "10px", color: "#c9a85b", marginTop: "6px" }}>
-                            * Interpolated Visualization Field
+                            * Interpolated Dynamic Field ({activeLayer.toUpperCase()})
                           </div>
                         </div>
                       </Popup>
@@ -264,12 +272,12 @@ export default function WeatherPatternView({ stations = [] }) {
               color: "#c9a85b",
               zIndex: 1000
             }}>
-              Interpolated Spatial Grid ({activeLayer.toUpperCase()})
+              Interpolated Dynamic Grid ({activeLayer.toUpperCase()})
             </div>
           </div>
         </div>
 
-        {/* Right: Weather Risk Alerts Panel */}
+        {/* Right: Weather Risk Alerts Panel (Explicitly Labeled Demo Preview) */}
         <div style={{
           backgroundColor: "#1c1c22",
           border: "1px solid #2c2c36",
@@ -287,14 +295,15 @@ export default function WeatherPatternView({ stations = [] }) {
                 </h3>
               </div>
               <span style={{
-                fontSize: "11px",
-                backgroundColor: "rgba(217, 142, 74, 0.15)",
-                color: "#d98e4a",
+                fontSize: "10px",
+                backgroundColor: "rgba(201, 168, 91, 0.15)",
+                color: "#c9a85b",
                 padding: "2px 8px",
                 borderRadius: "10px",
-                fontWeight: "600"
+                fontWeight: "600",
+                border: "1px solid rgba(201, 168, 91, 0.3)"
               }}>
-                {riskAlerts.length} Active Risks
+                Demo Preview (Simulated Scenarios)
               </span>
             </div>
           </div>

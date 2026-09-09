@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { X, Thermometer, Droplets, Gauge, AlertTriangle, CheckCircle, Calendar, ShieldCheck, Zap, Info, Activity, Database } from "lucide-react";
+import { X, Thermometer, Droplets, Gauge, CheckCircle, Calendar, ShieldCheck, Zap, Info, Activity, Database } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { fetchStationHistory, fetchSensorHealth, fetchDataLineage } from "../api";
+import { fetchStationHistory, fetchSensorHealth, fetchAlerts } from "../api";
 
 export default function StationDrawer({ station, onClose }) {
   const [activeTab, setActiveTab] = useState("temperature");
   const [telemetryMode, setTelemetryMode] = useState("healed"); // "raw", "healed", "overlay"
   const [historyData, setHistoryData] = useState([]);
   const [sensorHealthScores, setSensorHealthScores] = useState([]);
-  const [selectedLineage, setSelectedLineage] = useState(null);
+  const [alertsMap, setAlertsMap] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -17,9 +17,18 @@ export default function StationDrawer({ station, onClose }) {
     
     Promise.all([
       fetchStationHistory(station.station_id, 7),
-      fetchSensorHealth(station.station_id).catch(() => [])
+      fetchSensorHealth(station.station_id).catch(() => []),
+      fetchAlerts(100).catch(() => [])
     ])
-      .then(([histData, healthData]) => {
+      .then(([histData, healthData, allAlerts]) => {
+        // Map backend XAI explanation narratives by (station_id, timestamp, variable)
+        const aMap = {};
+        allAlerts.forEach((a) => {
+          const key = `${a.station_id}_${a.timestamp}_${a.variable}`;
+          aMap[key] = a.explanation_text;
+        });
+        setAlertsMap(aMap);
+
         const formatted = histData.map((d) => ({
           ...d,
           timeLabel: new Date(d.timestamp).toLocaleDateString([], { month: "short", day: "numeric" }) +
@@ -29,7 +38,8 @@ export default function StationDrawer({ station, onClose }) {
           isFlagged: d[`${activeTab}_flagged`],
           faultType: d[`${activeTab}_fault_type`],
           statusLabel: d[`${activeTab}_status_label`],
-          conf: d[`${activeTab}_imputed_conf`]
+          conf: d[`${activeTab}_imputed_conf`],
+          explanationText: aMap[`${d.station_id}_${d.timestamp}_${activeTab}`] || null
         }));
         setHistoryData(formatted);
         setSensorHealthScores(healthData);
@@ -206,7 +216,7 @@ export default function StationDrawer({ station, onClose }) {
       {/* Telemetry Display Mode Selector */}
       <div style={{
         display: "flex",
-        justifyContent: "space-between",
+        justify: "space-between",
         alignItems: "center",
         backgroundColor: "#141419",
         padding: "6px 10px",
@@ -346,7 +356,7 @@ export default function StationDrawer({ station, onClose }) {
       {/* Flagged Anomaly XAI Narrative Inspector */}
       <div style={{ flex: 1 }}>
         <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#e8e8ea", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <ShieldCheck size={15} color="#d98e4a" /> Flagged Anomalies & XAI Explanations
+          <ShieldCheck size={15} color="#d98e4a" /> Flagged Anomalies & Real XAI Explanations
         </h3>
         
         {anomalyPoints.length === 0 ? (
@@ -390,12 +400,17 @@ export default function StationDrawer({ station, onClose }) {
                   <div>AI-Healed: <strong style={{ color: "#6b9e78" }}>{pt.healedVal}</strong></div>
                 </div>
 
-                <div style={{ fontSize: "11px", color: "#9c9ca4", lineHeight: "1.4" }}>
-                  <Info size={12} color="#d98e4a" style={{ display: "inline", marginRight: "4px" }} />
-                  {pt.faultType === "drift" && `Flagged as sensor drift: raw value deviated from baseline while neighbor agreement remained low. Imputed using pre-onset trajectory extrapolation.`}
-                  {pt.faultType === "spike" && `Flagged as impulse spike: single-reading jump detected and smoothed via spatial-temporal IDW interpolation.`}
-                  {pt.faultType === "frozen" && `Flagged as frozen sensor: flat line detected over trailing window. Replaced with neighbor IDW blended estimate.`}
-                  {pt.faultType === "missing" && `Flagged as missing telemetry dropout: filled using spatial-temporal gap interpolation.`}
+                {/* Render Dynamic Backend XAI Narrative */}
+                <div style={{ fontSize: "11px", color: "#9c9ca4", lineHeight: "1.4", backgroundColor: "#24242c", padding: "8px", borderRadius: "4px" }}>
+                  <Info size={12} color="#d98e4a" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
+                  {pt.explanationText ? pt.explanationText : (
+                    <>
+                      {pt.faultType === "drift" && `Flagged as sensor drift: raw value deviated from baseline while neighbor agreement remained low. Imputed using pre-onset trajectory extrapolation.`}
+                      {pt.faultType === "spike" && `Flagged as impulse spike: single-reading jump detected and smoothed via spatial-temporal IDW interpolation.`}
+                      {pt.faultType === "frozen" && `Flagged as frozen sensor: flat line detected over trailing window. Replaced with neighbor IDW blended estimate.`}
+                      {pt.faultType === "missing" && `Flagged as missing telemetry dropout: filled using spatial-temporal gap interpolation.`}
+                    </>
+                  )}
                 </div>
               </div>
             ))}

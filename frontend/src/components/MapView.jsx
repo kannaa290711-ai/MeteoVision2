@@ -1,7 +1,7 @@
 import React from "react";
 import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import { Thermometer, Droplets, Gauge, Wind, CloudRain, Cpu, Info, ShieldCheck, ChevronRight } from "lucide-react";
+import { Thermometer, Droplets, Gauge, Wind, CloudRain, Cpu, Info, ChevronRight } from "lucide-react";
 
 const getTierColor = (tier) => {
   switch (tier) {
@@ -64,9 +64,9 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
           const score = st.health_score ?? 100.0;
           const icon = createCustomIcon(tier, st.status === "ANOMALY");
 
-          // Derived baseline readings for wind & rainfall if not directly in API payload
-          const windSpeed = (12.4 + (st.lat * 10) % 8).toFixed(1); // Baseline wind estimate
-          const rainfall = ((st.lon * 10) % 3 > 1.8 ? 2.5 : 0.0).toFixed(1); // Baseline rain estimate
+          // Explicitly derived baseline indicators (not from DB schema)
+          const windSpeed = (12.4 + (st.lat * 10) % 8).toFixed(1);
+          const rainfall = ((st.lon * 10) % 3 > 1.8 ? 2.5 : 0.0).toFixed(1);
 
           return (
             <Marker
@@ -84,9 +84,9 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
               </Tooltip>
 
               <Popup>
-                <div style={{ minWidth: "260px", maxWidth: "290px", color: "#e8e8ea", padding: "2px" }}>
+                <div style={{ minWidth: "270px", maxWidth: "300px", color: "#e8e8ea", padding: "2px" }}>
                   {/* Header: Station Name & Health Tier */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                     <div>
                       <h4 style={{ margin: 0, fontSize: "14px", color: "#e8e8ea", fontWeight: "700" }}>{st.name}</h4>
                       <p style={{ margin: "2px 0 0 0", fontSize: "11px", color: "#9c9ca4" }}>
@@ -107,50 +107,77 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
                     </span>
                   </div>
 
-                  {/* Data Provenance Tag */}
+                  {/* Section 1: Genuine Real Telemetry (API-Backed) */}
                   <div style={{
-                    fontSize: "10px",
-                    color: "#6b9e78",
-                    marginBottom: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px"
-                  }}>
-                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "#6b9e78" }}></span>
-                    Provenance: Real Telemetry (API-Backed)
-                  </div>
-
-                  {/* Current Sensor Telemetry Grid */}
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "6px",
                     backgroundColor: "#141419",
-                    padding: "8px",
                     borderRadius: "6px",
                     border: "1px solid #2c2c36",
-                    marginBottom: "8px",
-                    fontSize: "11px"
+                    padding: "8px",
+                    marginBottom: "6px"
                   }}>
-                    <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <Thermometer size={13} color="#b85c5c" />
-                      Temp: <strong style={{ color: "#e8e8ea" }}>{st.latest_temperature !== null ? `${st.latest_temperature}°C` : "N/A"}</strong>
+                    <div style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      color: "#6b9e78",
+                      marginBottom: "6px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#6b9e78" }}></span>
+                      Real Telemetry (API-Backed)
                     </div>
-                    <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <Droplets size={13} color="#d98e4a" />
-                      Humidity: <strong style={{ color: "#e8e8ea" }}>{st.latest_humidity !== null ? `${st.latest_humidity}%` : "N/A"}</strong>
-                    </div>
-                    <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <Gauge size={13} color="#c9a85b" />
-                      Pressure: <strong style={{ color: "#e8e8ea" }}>{st.latest_pressure !== null ? `${st.latest_pressure} hPa` : "N/A"}</strong>
-                    </div>
-                    <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <Wind size={13} color="#6b9e78" />
-                      Wind: <strong style={{ color: "#e8e8ea" }}>{windSpeed} km/h</strong>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "11px" }}>
+                      <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <Thermometer size={12} color="#b85c5c" />
+                        Temp: <strong style={{ color: "#e8e8ea" }}>{st.latest_temperature !== null ? `${st.latest_temperature}°C` : "N/A"}</strong>
+                      </div>
+                      <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <Droplets size={12} color="#d98e4a" />
+                        Hum: <strong style={{ color: "#e8e8ea" }}>{st.latest_humidity !== null ? `${st.latest_humidity}%` : "N/A"}</strong>
+                      </div>
+                      <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px", gridColumn: "span 2" }}>
+                        <Gauge size={12} color="#c9a85b" />
+                        Press: <strong style={{ color: "#e8e8ea" }}>{st.latest_pressure !== null ? `${st.latest_pressure} hPa` : "N/A"}</strong>
+                      </div>
                     </div>
                   </div>
 
-                  {/* AI Anomaly Analysis Summary */}
+                  {/* Section 2: Explicitly Labeled Derived Baseline Indicators */}
+                  <div style={{
+                    backgroundColor: "#141419",
+                    borderRadius: "6px",
+                    border: "1px dashed #2c2c36",
+                    padding: "6px 8px",
+                    marginBottom: "8px"
+                  }}>
+                    <div style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      color: "#c9a85b",
+                      marginBottom: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}>
+                      <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "#c9a85b" }}></span>
+                      Estimated Baseline Indicators
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "11px" }}>
+                      <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <Wind size={12} color="#6b9e78" />
+                        Wind: <strong style={{ color: "#e8e8ea" }}>{windSpeed} km/h</strong>
+                      </div>
+                      <div style={{ color: "#9c9ca4", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <CloudRain size={12} color="#4a9b8e" />
+                        Rain: <strong style={{ color: "#e8e8ea" }}>{rainfall} mm</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI Anomaly Status Summary */}
                   <div style={{
                     backgroundColor: "#141419",
                     borderRadius: "6px",
