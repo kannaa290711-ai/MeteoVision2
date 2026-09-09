@@ -187,7 +187,7 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                       <span style={{ fontSize: "11px", fontWeight: "700", color: "#e8e8ea", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <Cpu size={12} color="#d98e4a" /> AI Anomaly Status:
+                        <Cpu size={12} color="#3b82f6" /> AI Anomaly Status:
                       </span>
                       <span style={{
                         fontSize: "10px",
@@ -200,7 +200,7 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
 
                     {st.maintenance_recommendation && (
                       <p style={{ margin: 0, fontSize: "10px", color: "#9c9ca4", lineHeight: "1.3" }}>
-                        <Info size={11} color="#d98e4a" style={{ display: "inline", marginRight: "3px", verticalAlign: "middle" }} />
+                        <Info size={11} color="#3b82f6" style={{ display: "inline", marginRight: "3px", verticalAlign: "middle" }} />
                         {st.maintenance_recommendation}
                       </p>
                     )}
@@ -212,7 +212,7 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
                     style={{
                       width: "100%",
                       padding: "7px 10px",
-                      backgroundColor: "#d98e4a",
+                      backgroundColor: "#3b82f6",
                       color: "#ffffff",
                       border: "none",
                       borderRadius: "6px",

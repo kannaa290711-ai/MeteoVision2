@@ -20,8 +20,8 @@ export default function MetricsCard({ metrics }) {
       value: `${precision}%`,
       sub: `${metrics?.tp || 4196} True Pos / ${metrics?.fp || 760} False Pos`,
       icon: Target,
-      color: "#d98e4a",
-      bgColor: "rgba(217, 142, 74, 0.14)"
+      color: "#3b82f6",
+      bgColor: "rgba(59, 130, 246, 0.14)"
     },
     {
       title: "Detection Recall",

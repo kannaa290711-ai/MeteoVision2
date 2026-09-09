@@ -127,7 +127,7 @@ export default function AlertFeed({ alerts = [], onSelectStation }) {
                   cursor: "pointer",
                   transition: "all 0.2s"
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = "#d98e4a"}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = "#3b82f6"}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#2c2c36"; e.currentTarget.style.borderLeftColor = faultColor; }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
@@ -178,7 +178,7 @@ export default function AlertFeed({ alerts = [], onSelectStation }) {
                     borderRadius: "4px",
                     marginTop: "6px"
                   }}>
-                    <Info size={12} color="#d98e4a" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
+                    <Info size={12} color="#3b82f6" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
                     {alert.explanation_text}
                   </div>
                 )}

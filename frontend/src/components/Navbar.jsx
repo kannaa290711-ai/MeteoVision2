@@ -24,8 +24,8 @@ export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboar
       {/* Brand Title */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <div style={{
-          backgroundColor: "rgba(217, 142, 74, 0.14)",
-          color: "#d98e4a",
+          backgroundColor: "rgba(59, 130, 246, 0.14)",
+          color: "#3b82f6",
           padding: "8px",
           borderRadius: "8px",
           display: "flex"
@@ -41,10 +41,10 @@ export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboar
               fontSize: "11px",
               padding: "2px 8px",
               borderRadius: "12px",
-              backgroundColor: "rgba(217, 142, 74, 0.12)",
-              color: "#d98e4a",
+              backgroundColor: "rgba(59, 130, 246, 0.12)",
+              color: "#3b82f6",
               fontWeight: "600",
-              border: "1px solid rgba(217, 142, 74, 0.3)"
+              border: "1px solid rgba(59, 130, 246, 0.3)"
             }}>
               Phases 1-3 Verified | SIH PS-26073
             </span>
@@ -76,7 +76,7 @@ export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboar
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
-            backgroundColor: activeTab === "dashboard" ? "#d98e4a" : "transparent",
+            backgroundColor: activeTab === "dashboard" ? "#3b82f6" : "transparent",
             color: activeTab === "dashboard" ? "#ffffff" : "#9c9ca4",
             transition: "all 0.2s"
           }}
@@ -97,7 +97,7 @@ export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboar
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
-            backgroundColor: activeTab === "weather-risk" ? "#4a9b8e" : "transparent",
+            backgroundColor: activeTab === "weather-risk" ? "#2563eb" : "transparent",
             color: activeTab === "weather-risk" ? "#ffffff" : "#9c9ca4",
             transition: "all 0.2s"
           }}
@@ -118,7 +118,7 @@ export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboar
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
-            backgroundColor: activeTab === "roadmap" ? "#c9a85b" : "transparent",
+            backgroundColor: activeTab === "roadmap" ? "#1d4ed8" : "transparent",
             color: activeTab === "roadmap" ? "#ffffff" : "#9c9ca4",
             transition: "all 0.2s"
           }}

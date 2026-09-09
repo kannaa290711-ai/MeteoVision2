@@ -84,7 +84,7 @@ export default function WeatherPatternView({ stations = [] }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <ShieldAlert size={18} color="#d98e4a" />
+              <ShieldAlert size={18} color="#3b82f6" />
               <h2 style={{ fontSize: "16px", fontWeight: "700", color: "#e8e8ea", margin: 0 }}>
                 Regional Weather Patterns & Early Warning Risk Assessment
               </h2>
@@ -92,7 +92,7 @@ export default function WeatherPatternView({ stations = [] }) {
                 fontSize: "10px",
                 fontWeight: "700",
                 backgroundColor: "rgba(217, 142, 74, 0.15)",
-                color: "#d98e4a",
+                color: "#3b82f6",
                 border: "1px solid rgba(217, 142, 74, 0.3)",
                 padding: "2px 8px",
                 borderRadius: "10px"
@@ -159,7 +159,7 @@ export default function WeatherPatternView({ stations = [] }) {
             backgroundColor: "#141419"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "700", color: "#e8e8ea" }}>
-              <Layers size={16} color="#d98e4a" /> Switch Visualization Layer:
+              <Layers size={16} color="#3b82f6" /> Switch Visualization Layer:
             </div>
 
             <div style={{ display: "flex", gap: "6px" }}>
@@ -186,7 +186,7 @@ export default function WeatherPatternView({ stations = [] }) {
                       border: "none",
                       borderRadius: "6px",
                       cursor: "pointer",
-                      backgroundColor: isActive ? "#d98e4a" : "#24242c",
+                      backgroundColor: isActive ? "#3b82f6" : "#24242c",
                       color: isActive ? "#ffffff" : "#9c9ca4",
                       transition: "all 0.2s"
                     }}
@@ -289,7 +289,7 @@ export default function WeatherPatternView({ stations = [] }) {
           <div style={{ padding: "14px 16px", borderBottom: "1px solid #2c2c36", backgroundColor: "#141419" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <AlertTriangle size={16} color="#d98e4a" />
+                <AlertTriangle size={16} color="#3b82f6" />
                 <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#e8e8ea", margin: 0 }}>
                   Elevated Risk Indicators
                 </h3>
@@ -313,7 +313,7 @@ export default function WeatherPatternView({ stations = [] }) {
               <div key={risk.id} style={{
                 backgroundColor: "#141419",
                 border: "1px solid #2c2c36",
-                borderLeft: "3px solid #d98e4a",
+                borderLeft: "3px solid #3b82f6",
                 borderRadius: "6px",
                 padding: "12px",
                 display: "flex",
@@ -348,7 +348,7 @@ export default function WeatherPatternView({ stations = [] }) {
                 <div style={{
                   fontSize: "10px",
                   fontWeight: "700",
-                  color: "#d98e4a",
+                  color: "#3b82f6",
                   backgroundColor: "#24242c",
                   padding: "4px 8px",
                   borderRadius: "4px"

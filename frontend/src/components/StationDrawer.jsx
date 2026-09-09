@@ -159,7 +159,7 @@ export default function StationDrawer({ station, onClose }) {
           marginBottom: "16px"
         }}>
           <h4 style={{ fontSize: "12px", fontWeight: "700", color: "#e8e8ea", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Activity size={14} color="#d98e4a" /> Sensor Health Breakdown by Variable
+            <Activity size={14} color="#3b82f6" /> Sensor Health Breakdown by Variable
           </h4>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
             {sensorHealthScores.filter(s => s.variable !== "overall").map((sh) => {
@@ -195,7 +195,7 @@ export default function StationDrawer({ station, onClose }) {
         </div>
 
         <div style={{ backgroundColor: "#141419", padding: "12px", borderRadius: "8px", border: "1px solid #2c2c36" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#d98e4a", fontSize: "11px", fontWeight: "600" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#3b82f6", fontSize: "11px", fontWeight: "600" }}>
             <Droplets size={15} /> Humidity
           </div>
           <div style={{ fontSize: "17px", fontWeight: "700", color: "#e8e8ea", marginTop: "4px" }}>
@@ -224,7 +224,7 @@ export default function StationDrawer({ station, onClose }) {
         border: "1px solid #2c2c36",
         marginBottom: "14px"
       }}>
-        <span style={{ fontSize: "12px", fontWeight: "600", color: "#d98e4a", display: "flex", alignItems: "center", gap: "6px" }}>
+        <span style={{ fontSize: "12px", fontWeight: "600", color: "#3b82f6", display: "flex", alignItems: "center", gap: "6px" }}>
           <Zap size={14} /> Telemetry Mode:
         </span>
         <div style={{ display: "flex", gap: "4px" }}>
@@ -243,7 +243,7 @@ export default function StationDrawer({ station, onClose }) {
                 border: "none",
                 borderRadius: "4px",
                 cursor: "pointer",
-                backgroundColor: telemetryMode === mode.id ? "#d98e4a" : "#24242c",
+                backgroundColor: telemetryMode === mode.id ? "#3b82f6" : "#24242c",
                 color: telemetryMode === mode.id ? "#ffffff" : "#9c9ca4",
                 transition: "all 0.2s"
               }}
@@ -278,7 +278,7 @@ export default function StationDrawer({ station, onClose }) {
                 border: "none",
                 borderRadius: "4px",
                 cursor: "pointer",
-                backgroundColor: activeTab === varName ? "#d98e4a" : "transparent",
+                backgroundColor: activeTab === varName ? "#3b82f6" : "transparent",
                 color: activeTab === varName ? "#ffffff" : "#9c9ca4",
                 textTransform: "capitalize"
               }}
@@ -356,7 +356,7 @@ export default function StationDrawer({ station, onClose }) {
       {/* Flagged Anomaly XAI Narrative Inspector */}
       <div style={{ flex: 1 }}>
         <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#e8e8ea", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <ShieldCheck size={15} color="#d98e4a" /> Flagged Anomalies & Real XAI Explanations
+          <ShieldCheck size={15} color="#3b82f6" /> Flagged Anomalies & Real XAI Explanations
         </h3>
         
         {anomalyPoints.length === 0 ? (
@@ -383,9 +383,9 @@ export default function StationDrawer({ station, onClose }) {
                     fontWeight: "600",
                     padding: "2px 6px",
                     borderRadius: "4px",
-                    backgroundColor: "rgba(217, 142, 74, 0.14)",
-                    color: "#d98e4a",
-                    border: "1px solid rgba(217, 142, 74, 0.3)"
+                    backgroundColor: "rgba(59, 130, 246, 0.14)",
+                    color: "#3b82f6",
+                    border: "1px solid rgba(59, 130, 246, 0.3)"
                   }}>
                     {pt.statusLabel}
                   </span>
@@ -402,7 +402,7 @@ export default function StationDrawer({ station, onClose }) {
 
                 {/* Render Dynamic Backend XAI Narrative */}
                 <div style={{ fontSize: "11px", color: "#9c9ca4", lineHeight: "1.4", backgroundColor: "#24242c", padding: "8px", borderRadius: "4px" }}>
-                  <Info size={12} color="#d98e4a" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
+                  <Info size={12} color="#3b82f6" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
                   {pt.explanationText ? pt.explanationText : (
                     <>
                       {pt.faultType === "drift" && `Flagged as sensor drift: raw value deviated from baseline while neighbor agreement remained low. Imputed using pre-onset trajectory extrapolation.`}

@@ -3,9 +3,9 @@ import { MapPin, MousePointerClick, Activity, AlertTriangle, Cpu, ShieldCheck } 
 
 export default function UserJourneyBanner() {
   const steps = [
-    { num: 1, label: "MAP", desc: "12 AWS Stations", icon: MapPin, color: "#d98e4a" },
+    { num: 1, label: "MAP", desc: "12 AWS Stations", icon: MapPin, color: "#3b82f6" },
     { num: 2, label: "SELECT STATION", desc: "Click Marker", icon: MousePointerClick, color: "#6b9e78" },
-    { num: 3, label: "VIEW READINGS", desc: "Temp / Hum / Press", icon: Activity, color: "#c9a85b" },
+    { num: 3, label: "VIEW READINGS", desc: "Temp / Hum / Press", icon: Activity, color: "#60a5fa" },
     { num: 4, label: "DETECT ANOMALY", desc: "Spike / Drift / Frozen", icon: AlertTriangle, color: "#b85c5c" },
     { num: 5, label: "ANALYZE", desc: "XAI & Imputation", icon: Cpu, color: "#9c9ca4" },
     { num: 6, label: "ALERT", desc: "Trust Score & Action", icon: ShieldCheck, color: "#6b9e78" },
@@ -26,7 +26,7 @@ export default function UserJourneyBanner() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
         <div>
           <h1 style={{ fontSize: "16px", fontWeight: "700", color: "#e8e8ea", margin: 0 }}>
-            AETHERIX SENTINEL — <span style={{ color: "#d98e4a" }}>Intelligent AWS Monitoring & Anomaly Detection</span>
+            AETHERIX SENTINEL — <span style={{ color: "#3b82f6" }}>Intelligent AWS Monitoring & Anomaly Detection</span>
           </h1>
           <p style={{ fontSize: "12px", color: "#9c9ca4", margin: "3px 0 0 0" }}>
             An AI-powered platform for intelligent monitoring of Automatic Weather Stations, sensor anomalies, and weather patterns.
@@ -59,7 +59,6 @@ export default function UserJourneyBanner() {
         borderTop: "1px solid #2c2c36"
       }}>
         {steps.map((step, idx) => {
-          const IconComp = step.icon;
           return (
             <div key={idx} style={{
               backgroundColor: "#141419",
