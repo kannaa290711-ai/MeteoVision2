@@ -20,18 +20,6 @@ def get_all_stations_with_status(db: Session):
             RawReading.station_id == st.station_id
         ).order_by(desc(RawReading.timestamp)).first()
         
-        active_flags = 0
-        if latest_ts:
-            cutoff = latest_ts - timedelta(hours=24)
-            active_flags = db.query(AnomalyFlag).filter(
-                AnomalyFlag.station_id == st.station_id,
-                AnomalyFlag.timestamp >= cutoff,
-                AnomalyFlag.flagged == True,
-                AnomalyFlag.predicted_fault_type != "none"
-            ).count()
-            
-        status = "ANOMALY" if active_flags > 0 else "NORMAL"
-        
         # Query Health Score for overall station
         health_rec = db.query(SensorHealthScore).filter(
             SensorHealthScore.station_id == st.station_id,
@@ -41,6 +29,18 @@ def get_all_stations_with_status(db: Session):
         h_score = health_rec.health_score if health_rec else 100.0
         h_tier = health_rec.status_tier if health_rec else "Healthy"
         h_rec = health_rec.maintenance_recommendation if health_rec else "Routine scheduled maintenance only."
+
+        active_flags_24h = 0
+        if latest_ts:
+            cutoff = latest_ts - timedelta(hours=24)
+            active_flags_24h = db.query(AnomalyFlag).filter(
+                AnomalyFlag.station_id == st.station_id,
+                AnomalyFlag.timestamp >= cutoff,
+                AnomalyFlag.flagged == True,
+                AnomalyFlag.predicted_fault_type != "none"
+            ).count()
+            
+        status = "ANOMALY" if (active_flags_24h > 0 or h_tier in ["Degraded", "Critical", "Watch"] or h_score < 80.0) else "NORMAL"
         
         results.append({
             "station_id": st.station_id,

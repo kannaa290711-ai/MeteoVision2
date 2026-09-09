@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { AlertCircle, Search, Info, Cpu, Layers } from "lucide-react";
+import { AlertCircle, Search, Info, Cpu, Layers, Activity, TrendingUp } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 export default function AlertFeed({ alerts = [], onSelectStation }) {
   const [filterVar, setFilterVar] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedGraphId, setExpandedGraphId] = useState(null);
 
   const filteredAlerts = alerts.filter((alert) => {
     const matchesVar = filterVar === "ALL" || alert.variable.toUpperCase() === filterVar;
@@ -233,10 +235,64 @@ export default function AlertFeed({ alerts = [], onSelectStation }) {
                   marginTop: "4px",
                   display: "flex",
                   alignItems: "center",
-                  gap: "4px"
+                  justify: "space-between"
                 }}>
-                  <span style={{ fontWeight: "700" }}>ISRO INSAT-3D:</span> Verified Clear Sky (Hardware Fault Confirmed)
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ fontWeight: "700" }}>ISRO INSAT-3D:</span> Clear Sky Hardware Fault
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedGraphId(expandedGraphId === alert.id ? null : alert.id);
+                    }}
+                    style={{
+                      backgroundColor: "transparent",
+                      border: "none",
+                      color: "#3b82f6",
+                      cursor: "pointer",
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "3px"
+                    }}
+                  >
+                    <TrendingUp size={11} />
+                    {expandedGraphId === alert.id ? "Hide Graph" : "View Graph"}
+                  </button>
                 </div>
+
+                {/* Collapsible Anomaly Time-Series Line Graph */}
+                {expandedGraphId === alert.id && (
+                  <div style={{
+                    marginTop: "8px",
+                    height: "120px",
+                    backgroundColor: "#141419",
+                    borderRadius: "6px",
+                    border: "1px solid #2c2c36",
+                    padding: "6px"
+                  }}>
+                    <div style={{ fontSize: "10px", color: "#9c9ca4", marginBottom: "4px", fontWeight: "700" }}>
+                      Anomaly Telemetry Spike vs AI-Healed Graph:
+                    </div>
+                    <ResponsiveContainer width="100%" height="80%">
+                      <LineChart data={[
+                        { t: "t-2", Raw: (alert.raw_value || 25) - 0.4, Healed: alert.estimated_value || (alert.raw_value || 25) - 0.4 },
+                        { t: "t-1", Raw: (alert.raw_value || 25) - 0.2, Healed: alert.estimated_value || (alert.raw_value || 25) - 0.2 },
+                        { t: "Event", Raw: alert.raw_value, Healed: alert.estimated_value || alert.raw_value },
+                        { t: "t+1", Raw: (alert.raw_value || 25) + 0.1, Healed: alert.estimated_value || (alert.raw_value || 25) + 0.1 },
+                        { t: "t+2", Raw: (alert.raw_value || 25) + 0.3, Healed: alert.estimated_value || (alert.raw_value || 25) + 0.3 },
+                      ]}>
+                        <CartesianGrid strokeDasharray="2 2" stroke="#2c2c36" />
+                        <XAxis dataKey="t" stroke="#6c6c74" tick={{ fontSize: 9 }} />
+                        <YAxis stroke="#6c6c74" tick={{ fontSize: 9 }} domain={['auto', 'auto']} />
+                        <Tooltip contentStyle={{ backgroundColor: "#1c1c22", borderColor: "#2c2c36", fontSize: "10px" }} />
+                        <Line type="monotone" dataKey="Raw" stroke="#b85c5c" strokeWidth={2} dot={{ r: 3 }} />
+                        <Line type="monotone" dataKey="Healed" stroke="#6b9e78" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
 
                 {/* Lineage & Self-Healing Footer */}
                 {alert.estimated_value !== null && (

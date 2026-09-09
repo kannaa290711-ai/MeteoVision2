@@ -34,8 +34,14 @@ const createCustomIcon = (statusTier, hasAnomaly) => {
 };
 
 export default function MapView({ stations = [], selectedStationId, onSelectStation }) {
+  const [showOnlyIrregular, setShowOnlyIrregular] = useState(false);
   const defaultCenter = [18.35, 73.9];
   const defaultZoom = 9;
+
+  const irregularStationsCount = stations.filter((s) => s.status === "ANOMALY" || (s.health_score && s.health_score < 85.0)).length;
+  const displayedStations = showOnlyIrregular
+    ? stations.filter((s) => s.status === "ANOMALY" || (s.health_score && s.health_score < 85.0))
+    : stations;
 
   return (
     <div style={{
@@ -47,6 +53,40 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
       position: "relative",
       backgroundColor: "#141419"
     }}>
+      {/* Top Map Control Overlay Bar */}
+      <div style={{
+        position: "absolute",
+        top: "14px",
+        left: "50px",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        gap: "10px"
+      }}>
+        <button
+          onClick={() => setShowOnlyIrregular(!showOnlyIrregular)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 12px",
+            backgroundColor: showOnlyIrregular ? "#b85c5c" : "#1c1c22e6",
+            backdropFilter: "blur(6px)",
+            color: "#ffffff",
+            border: `1px solid ${showOnlyIrregular ? "#b85c5c" : "#2c2c36"}`,
+            borderRadius: "6px",
+            fontSize: "11px",
+            fontWeight: "700",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+            transition: "all 0.2s"
+          }}
+        >
+          <AlertCircle size={14} color={showOnlyIrregular ? "#ffffff" : "#b85c5c"} />
+          {showOnlyIrregular ? "Showing Irregular Stations Only" : `Filter Irregular Stations (${irregularStationsCount})`}
+        </button>
+      </div>
+
       <MapContainer
         center={defaultCenter}
         zoom={defaultZoom}
@@ -58,7 +98,7 @@ export default function MapView({ stations = [], selectedStationId, onSelectStat
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
-        {stations.map((st) => {
+        {displayedStations.map((st) => {
           const isSelected = st.station_id === selectedStationId;
           const tier = st.status_tier || "Healthy";
           const score = st.health_score ?? 100.0;
