@@ -19,10 +19,20 @@ export const fetchStationHistory = async (stationId, days = 7) => {
   return response.data;
 };
 
+export const fetchSensorHealth = async (stationId) => {
+  const response = await api.get(`/sensor-health/${stationId}`);
+  return response.data;
+};
+
 export const fetchAlerts = async (limit = 50) => {
   const response = await api.get("/alerts", {
     params: { limit },
   });
+  return response.data;
+};
+
+export const fetchDataLineage = async (flagId) => {
+  const response = await api.get(`/lineage/${flagId}`);
   return response.data;
 };
 

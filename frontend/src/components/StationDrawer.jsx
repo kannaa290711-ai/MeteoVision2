@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { X, Thermometer, Droplets, Gauge, AlertTriangle, CheckCircle, Calendar, ShieldCheck, Zap, Info } from "lucide-react";
+import { X, Thermometer, Droplets, Gauge, AlertTriangle, CheckCircle, Calendar, ShieldCheck, Zap, Info, Activity, Database } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { fetchStationHistory } from "../api";
+import { fetchStationHistory, fetchSensorHealth, fetchDataLineage } from "../api";
 
 export default function StationDrawer({ station, onClose }) {
   const [activeTab, setActiveTab] = useState("temperature");
   const [telemetryMode, setTelemetryMode] = useState("healed"); // "raw", "healed", "overlay"
   const [historyData, setHistoryData] = useState([]);
+  const [sensorHealthScores, setSensorHealthScores] = useState([]);
+  const [selectedLineage, setSelectedLineage] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!station) return;
     setLoading(true);
-    fetchStationHistory(station.station_id, 7)
-      .then((data) => {
-        const formatted = data.map((d) => ({
+    
+    Promise.all([
+      fetchStationHistory(station.station_id, 7),
+      fetchSensorHealth(station.station_id).catch(() => [])
+    ])
+      .then(([histData, healthData]) => {
+        const formatted = histData.map((d) => ({
           ...d,
           timeLabel: new Date(d.timestamp).toLocaleDateString([], { month: "short", day: "numeric" }) +
                      " " + new Date(d.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -26,8 +32,9 @@ export default function StationDrawer({ station, onClose }) {
           conf: d[`${activeTab}_imputed_conf`]
         }));
         setHistoryData(formatted);
+        setSensorHealthScores(healthData);
       })
-      .catch((err) => console.error("Error fetching station history:", err))
+      .catch((err) => console.error("Error fetching station analytics:", err))
       .finally(() => setLoading(false));
   }, [station, activeTab]);
 
@@ -35,7 +42,6 @@ export default function StationDrawer({ station, onClose }) {
 
   const tier = station.status_tier || "Healthy";
   const score = station.health_score ?? 100.0;
-
   const anomalyPoints = historyData.filter((d) => d.isFlagged);
 
   const getTierColor = (t) => {
@@ -53,7 +59,8 @@ export default function StationDrawer({ station, onClose }) {
       position: "fixed",
       top: 0,
       right: 0,
-      width: "520px",
+      width: "560px",
+      maxWidth: "100vw",
       height: "100vh",
       backgroundColor: "#1c1c22",
       borderLeft: "1px solid #2c2c36",
@@ -65,10 +72,10 @@ export default function StationDrawer({ station, onClose }) {
       overflowY: "auto"
     }}>
       {/* Drawer Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <h2 style={{ fontSize: "18px", fontWeight: "700", color: "#e8e8ea" }}>{station.name}</h2>
+            <h2 style={{ fontSize: "18px", fontWeight: "700", color: "#e8e8ea", margin: 0 }}>{station.name}</h2>
             <span style={{
               fontSize: "11px",
               fontWeight: "700",
@@ -81,8 +88,8 @@ export default function StationDrawer({ station, onClose }) {
               {tier} ({score}/100)
             </span>
           </div>
-          <p style={{ fontSize: "12px", color: "#9c9ca4", marginTop: "4px" }}>
-            ID: {station.station_id} | Coords: {station.lat.toFixed(4)}°N, {station.lon.toFixed(4)}°E | Elev: {station.elevation_m}m
+          <p style={{ fontSize: "12px", color: "#9c9ca4", marginTop: "4px", margin: "4px 0 0 0" }}>
+            ID: <strong>{station.station_id}</strong> | {station.lat.toFixed(4)}°N, {station.lon.toFixed(4)}°E | Elev: {station.elevation_m}m
           </p>
         </div>
         <button
@@ -100,10 +107,27 @@ export default function StationDrawer({ station, onClose }) {
         </button>
       </div>
 
-      {/* Sensor Maintenance Recommendation Alert Box */}
+      {/* Data Provenance Badge */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        backgroundColor: "#141419",
+        border: "1px solid #2c2c36",
+        padding: "4px 10px",
+        borderRadius: "6px",
+        fontSize: "11px",
+        color: "#6b9e78",
+        marginBottom: "14px"
+      }}>
+        <Database size={13} color="#6b9e78" />
+        <strong style={{ color: "#e8e8ea" }}>Data Lineage:</strong> Historical Telemetry (7-Day Rolling Buffer)
+      </div>
+
+      {/* Sensor Maintenance Advisory Alert */}
       {station.maintenance_recommendation && (
         <div style={{
-          marginBottom: "16px",
+          marginBottom: "14px",
           padding: "10px 14px",
           backgroundColor: "#24242c",
           borderRadius: "6px",
@@ -112,6 +136,40 @@ export default function StationDrawer({ station, onClose }) {
           color: "#9c9ca4"
         }}>
           <strong style={{ color: "#e8e8ea" }}>Maintenance Advisory:</strong> {station.maintenance_recommendation}
+        </div>
+      )}
+
+      {/* Variable-Level Health Breakdown Bar */}
+      {sensorHealthScores.length > 0 && (
+        <div style={{
+          backgroundColor: "#141419",
+          border: "1px solid #2c2c36",
+          borderRadius: "8px",
+          padding: "12px",
+          marginBottom: "16px"
+        }}>
+          <h4 style={{ fontSize: "12px", fontWeight: "700", color: "#e8e8ea", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
+            <Activity size={14} color="#d98e4a" /> Sensor Health Breakdown by Variable
+          </h4>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+            {sensorHealthScores.filter(s => s.variable !== "overall").map((sh) => {
+              const shColor = getTierColor(sh.status_tier);
+              return (
+                <div key={sh.variable} style={{ backgroundColor: "#1c1c22", padding: "8px", borderRadius: "6px", border: "1px solid #2c2c36" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#9c9ca4", marginBottom: "3px" }}>
+                    <span style={{ textTransform: "capitalize", fontWeight: "600", color: "#e8e8ea" }}>{sh.variable}</span>
+                    <span style={{ color: shColor, fontWeight: "700" }}>{sh.health_score.toFixed(1)}</span>
+                  </div>
+                  <div style={{ width: "100%", height: "4px", backgroundColor: "#24242c", borderRadius: "2px", overflow: "hidden" }}>
+                    <div style={{ width: `${sh.health_score}%`, height: "100%", backgroundColor: shColor }}></div>
+                  </div>
+                  <div style={{ fontSize: "10px", color: "#6c6c74", marginTop: "4px" }}>
+                    {sh.fault_count_30d} faults / 30d
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -145,10 +203,10 @@ export default function StationDrawer({ station, onClose }) {
         </div>
       </div>
 
-      {/* Telemetry Display Mode Selector (Raw vs Healed vs Overlay) */}
+      {/* Telemetry Display Mode Selector */}
       <div style={{
         display: "flex",
-        justify: "space-between",
+        justifyContent: "space-between",
         alignItems: "center",
         backgroundColor: "#141419",
         padding: "6px 10px",
@@ -190,7 +248,7 @@ export default function StationDrawer({ station, onClose }) {
       <div style={{ marginBottom: "12px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
           <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#e8e8ea", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Calendar size={14} /> 7-Day Historical Data ({activeTab.toUpperCase()})
+            <Calendar size={14} /> 7-Day Historical Trend ({activeTab.toUpperCase()})
           </h3>
           <span style={{ fontSize: "11px", color: "#9c9ca4" }}>
             {anomalyPoints.length} anomalies flagged

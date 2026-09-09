@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Activity, ShieldAlert, CheckCircle2, Clock, Sparkles, LayoutDashboard } from "lucide-react";
+import { Activity, ShieldAlert, CheckCircle2, Clock, Sparkles, LayoutDashboard, CloudRain } from "lucide-react";
 
 export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboard", onSelectTab }) {
   const [timeStr, setTimeStr] = useState(new Date().toLocaleTimeString());
@@ -83,6 +83,27 @@ export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboar
         >
           <LayoutDashboard size={15} />
           <span>Live Sentinel Dashboard</span>
+        </button>
+
+        <button
+          onClick={() => onSelectTab && onSelectTab("weather-risk")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 14px",
+            fontSize: "12px",
+            fontWeight: "600",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            backgroundColor: activeTab === "weather-risk" ? "#4a9b8e" : "transparent",
+            color: activeTab === "weather-risk" ? "#ffffff" : "#9c9ca4",
+            transition: "all 0.2s"
+          }}
+        >
+          <CloudRain size={15} />
+          <span>Weather Patterns & Risk</span>
         </button>
 
         <button

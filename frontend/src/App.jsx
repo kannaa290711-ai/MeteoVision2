@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
+import UserJourneyBanner from "./components/UserJourneyBanner";
 import MetricsCard from "./components/MetricsCard";
 import MapView from "./components/MapView";
 import StationDrawer from "./components/StationDrawer";
 import AlertFeed from "./components/AlertFeed";
+import WeatherPatternView from "./components/WeatherPatternView";
 import FutureVisionView from "./components/FutureVisionView";
 import { fetchStations, fetchAlerts, fetchMetrics } from "./api";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" or "roadmap"
+  const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard", "weather-risk", "roadmap"
   const [stations, setStations] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [metrics, setMetrics] = useState(null);
@@ -53,9 +55,14 @@ export default function App() {
       {/* Conditional View Rendering */}
       {activeTab === "roadmap" ? (
         <FutureVisionView />
+      ) : activeTab === "weather-risk" ? (
+        <WeatherPatternView stations={stations} />
       ) : (
         /* Main Dashboard Workspace */
         <div style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column" }}>
+          {/* User Journey & Purpose Banner */}
+          <UserJourneyBanner />
+
           {/* Model Performance Banner */}
           <MetricsCard metrics={metrics} />
 

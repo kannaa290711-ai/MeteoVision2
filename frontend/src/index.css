@@ -85,20 +85,16 @@ body {
   justify-content: center;
 }
 
-/* Utility Layout Classes */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  grid-template-rows: auto 1fr;
-  height: calc(100vh - 64px);
-  gap: 16px;
-  padding: 16px;
-}
+/* Responsive Utilities & Mobile Layout */
+@media (max-width: 768px) {
+  header {
+    height: auto !important;
+    padding: 12px 16px !important;
+    flex-direction: column;
+    gap: 12px;
+  }
 
-@media (max-width: 1024px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr;
-    height: auto;
+  .station-drawer-container {
+    width: 100vw !important;
   }
 }
