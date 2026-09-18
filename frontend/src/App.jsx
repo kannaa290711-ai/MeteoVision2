@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import Sidebar from "./components/Sidebar";
+import DemoControlBar from "./components/DemoControlBar";
 import Navbar from "./components/Navbar";
 import UserJourneyBanner from "./components/UserJourneyBanner";
 import MetricsCard from "./components/MetricsCard";
@@ -7,6 +9,11 @@ import StationDrawer from "./components/StationDrawer";
 import AlertFeed from "./components/AlertFeed";
 import WeatherPatternView from "./components/WeatherPatternView";
 import FutureVisionView from "./components/FutureVisionView";
+import DisasterAlertCenter from "./components/DisasterAlertCenter";
+import MeteoVisionAIBot from "./components/MeteoVisionAIBot";
+import NearbyStationComparison from "./components/NearbyStationComparison";
+import FiveDayWeatherHistory from "./components/FiveDayWeatherHistory";
+import SensorHealthDeterioration from "./components/SensorHealthDeterioration";
 import { fetchStations, fetchAlerts, fetchMetrics, subscribeTelemetryStream } from "./api";
 
 const FALLBACK_STATIONS = [
@@ -31,15 +38,15 @@ const FALLBACK_ALERTS = [
     station_name: "Mahabaleshwar High-Altitude AWS",
     variable: "temperature",
     timestamp: new Date().toISOString(),
-    raw_value: 48.2,
-    estimated_value: 19.2,
+    raw_value: 29.2,
+    estimated_value: 20.1,
     predicted_fault_type: "spike",
     ml_confidence: 0.94,
     imputation_method: "Spatial-Temporal IDW",
     physics_check_passed: true,
-    shap_summary: "High positive attribution from trailing 15-min derivative",
-    multivariate_consistency_score: 0.12,
-    explanation_text: "Impulse spike anomaly detected: temperature jumped +29.0°C in single reading while humidity & pressure remained constant. Healed using IDW spatial interpolation."
+    shap_summary: "High positive attribution from trailing 15-min derivative (+0.42)",
+    multivariate_consistency_score: 0.08,
+    explanation_text: "Impulse spike anomaly detected: temperature jumped +9.1°C in single reading while humidity & pressure remained constant. Healed using IDW spatial interpolation."
   },
   {
     id: 2,
@@ -59,22 +66,18 @@ const FALLBACK_ALERTS = [
   }
 ];
 
-const FALLBACK_METRICS = {
-  precision: 0.847,
-  recall: 0.878,
-  f1: 0.862,
-  tp: 4196,
-  fp: 760
-};
+const FALLBACK_METRICS = { precision: 0.847, recall: 0.878, f1: 0.862, tp: 4196, fp: 760 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard", "weather-risk", "roadmap"
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [stations, setStations] = useState(FALLBACK_STATIONS);
   const [alerts, setAlerts] = useState(FALLBACK_ALERTS);
   const [metrics, setMetrics] = useState(FALLBACK_METRICS);
   const [selectedStationId, setSelectedStationId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(true);
+  const [isDemoActive, setIsDemoActive] = useState(true);
+  const [activeScenario, setActiveScenario] = useState("spike");
+  const [isWeatherEventDemo, setIsWeatherEventDemo] = useState(false);
 
   const loadDashboardData = async () => {
     try {
@@ -83,16 +86,9 @@ export default function App() {
         fetchAlerts(50),
         fetchMetrics()
       ]);
-
-      if (results[0].status === "fulfilled" && Array.isArray(results[0].value) && results[0].value.length > 0) {
-        setStations(results[0].value);
-      }
-      if (results[1].status === "fulfilled" && Array.isArray(results[1].value) && results[1].value.length > 0) {
-        setAlerts(results[1].value);
-      }
-      if (results[2].status === "fulfilled" && results[2].value) {
-        setMetrics(results[2].value);
-      }
+      if (results[0].status === "fulfilled" && Array.isArray(results[0].value) && results[0].value.length > 0) setStations(results[0].value);
+      if (results[1].status === "fulfilled" && Array.isArray(results[1].value) && results[1].value.length > 0) setAlerts(results[1].value);
+      if (results[2].status === "fulfilled" && results[2].value) setMetrics(results[2].value);
     } catch (err) {
       console.warn("Using fallback telemetry data:", err);
     } finally {
@@ -103,12 +99,9 @@ export default function App() {
   useEffect(() => {
     loadDashboardData();
     const interval = setInterval(loadDashboardData, 12000);
-
-    // Live Telemetry SSE Stream Subscription
     let unsubscribeStream = null;
     try {
       unsubscribeStream = subscribeTelemetryStream((newStreamItem) => {
-        setIsStreaming(true);
         if (newStreamItem.flagged) {
           setAlerts((prevAlerts) => [
             {
@@ -127,70 +120,140 @@ export default function App() {
         }
       });
     } catch (err) {
-      console.warn("Real-time SSE stream unavailable, relying on interval polling:", err);
+      console.warn("SSE stream warning:", err);
     }
-
     return () => {
       clearInterval(interval);
       if (unsubscribeStream) unsubscribeStream();
     };
   }, []);
 
+  // Handler for SIH Demo Scenario selection
+  const handleSelectScenario = (scenarioId) => {
+    setActiveScenario(scenarioId);
+    if (scenarioId === "spike") {
+      setSelectedStationId("AWS_002");
+      setIsWeatherEventDemo(false);
+      setActiveTab("dashboard");
+    } else if (scenarioId === "drift") {
+      setSelectedStationId("AWS_005");
+      setIsWeatherEventDemo(false);
+      setActiveTab("dashboard");
+    } else if (scenarioId === "frozen") {
+      setSelectedStationId("AWS_001");
+      setIsWeatherEventDemo(false);
+      setActiveTab("dashboard");
+    } else if (scenarioId === "missing") {
+      setSelectedStationId("AWS_003");
+      setIsWeatherEventDemo(false);
+      setActiveTab("dashboard");
+    } else if (scenarioId === "weather-event") {
+      setSelectedStationId("AWS_002");
+      setIsWeatherEventDemo(true);
+      setActiveTab("nearby-analysis");
+    } else if (scenarioId === "cyclone") {
+      setIsWeatherEventDemo(false);
+      setActiveTab("alerts-center");
+    }
+  };
+
+  const handleResetDemo = () => {
+    setActiveScenario(null);
+    setIsWeatherEventDemo(false);
+    setSelectedStationId(null);
+  };
+
   const activeAnomaliesCount = stations.filter((s) => s.status === "ANOMALY").length;
-  const selectedStation = stations.find((s) => s.station_id === selectedStationId);
+  const selectedStation = stations.find((s) => s.station_id === selectedStationId) || stations[1];
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#141419", display: "flex", flexDirection: "column" }}>
-      {/* Top Navigation Bar with View Switcher */}
-      <Navbar
-        activeAnomaliesCount={activeAnomaliesCount}
+    <div style={{ minHeight: "100vh", backgroundColor: "#141419", display: "flex", color: "#e8e8ea" }}>
+      {/* 1. Left Collapsible Sidebar */}
+      <Sidebar
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
+        isDemoActive={isDemoActive}
+        onToggleDemo={() => setIsDemoActive(!isDemoActive)}
       />
 
-      {/* Conditional View Rendering */}
-      {activeTab === "roadmap" ? (
-        <FutureVisionView />
-      ) : activeTab === "weather-risk" ? (
-        <WeatherPatternView stations={stations} />
-      ) : (
-        /* Main Dashboard Workspace */
-        <div style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column" }}>
-          {/* User Journey & Purpose Banner */}
-          <UserJourneyBanner />
+      {/* Main Workspace Right Area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflowX: "hidden" }}>
+        {/* Top Navbar */}
+        <Navbar
+          activeAnomaliesCount={activeAnomaliesCount}
+          activeTab={activeTab}
+          onSelectTab={(tab) => setActiveTab(tab)}
+        />
 
-          {/* Model Performance Banner */}
-          <MetricsCard metrics={metrics} />
+        {/* SIH Demo Mode Control Header */}
+        {isDemoActive && (
+          <DemoControlBar
+            activeScenario={activeScenario}
+            onSelectScenario={handleSelectScenario}
+            onResetDemo={handleResetDemo}
+          />
+        )}
 
-          {/* Core Layout: Map + Alert Ticker */}
-          <div style={{
-            flex: 1,
-            display: "grid",
-            gridTemplateColumns: "1fr 360px",
-            gap: "16px",
-            minHeight: "580px"
-          }}>
-            {/* Leaflet Map Area */}
-            <MapView
-              stations={stations}
-              selectedStationId={selectedStationId}
-              onSelectStation={(id) => setSelectedStationId(id)}
-            />
+        {/* View Switcher Router */}
+        <main style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+          {activeTab === "alerts-center" ? (
+            <DisasterAlertCenter stations={stations} />
+          ) : activeTab === "ai-bot" ? (
+            <MeteoVisionAIBot selectedStation={selectedStation} stations={stations} activeScenario={activeScenario} />
+          ) : activeTab === "nearby-analysis" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <NearbyStationComparison suspectStation={selectedStation} allStations={stations} isWeatherEvent={isWeatherEventDemo} />
+              <FiveDayWeatherHistory station={selectedStation} />
+            </div>
+          ) : activeTab === "sensor-health" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <SensorHealthDeterioration station={selectedStation} isDemoCritical={selectedStation.health_score < 50} />
+              <MetricsCard metrics={metrics} />
+            </div>
+          ) : activeTab === "analytics" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <FiveDayWeatherHistory station={selectedStation} />
+              <MetricsCard metrics={metrics} />
+            </div>
+          ) : activeTab === "weather-risk" ? (
+            <WeatherPatternView stations={stations} />
+          ) : activeTab === "roadmap" || activeTab === "settings-demo" ? (
+            <FutureVisionView />
+          ) : (
+            /* Live Dashboard & Map Default Workspace */
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", flex: 1 }}>
+              <UserJourneyBanner />
+              <MetricsCard metrics={metrics} />
 
-            {/* Real-time Alerts Ticker */}
-            <AlertFeed
-              alerts={alerts}
-              onSelectStation={(id) => setSelectedStationId(id)}
-            />
-          </div>
-        </div>
-      )}
+              <div style={{
+                flex: 1,
+                display: "grid",
+                gridTemplateColumns: "1fr 360px",
+                gap: "16px",
+                minHeight: "560px"
+              }}>
+                <MapView
+                  stations={stations}
+                  selectedStationId={selectedStationId}
+                  onSelectStation={(id) => setSelectedStationId(id)}
+                />
+                <AlertFeed
+                  alerts={alerts}
+                  onSelectStation={(id) => setSelectedStationId(id)}
+                />
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Station Analytics Side Drawer */}
-      {selectedStation && activeTab === "dashboard" && (
+      {selectedStation && (activeTab === "dashboard" || activeTab === "map" || activeTab === "stations" || activeTab === "anomalies") && (
         <StationDrawer
           station={selectedStation}
+          allStations={stations}
           onClose={() => setSelectedStationId(null)}
+          isWeatherEventDemo={isWeatherEventDemo}
         />
       )}
     </div>

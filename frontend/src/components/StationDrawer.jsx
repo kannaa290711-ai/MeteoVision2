@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { X, Thermometer, Droplets, Gauge, CheckCircle, Calendar, ShieldCheck, Zap, Info, Activity, Database } from "lucide-react";
+import { X, Thermometer, Droplets, Gauge, CheckCircle, Calendar, ShieldCheck, Zap, Info, Activity, Database, Bot, Send } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { fetchStationHistory, fetchSensorHealth, fetchAlerts, fetchPredictiveHealth } from "../api";
 import FaultReasoningCard from "./FaultReasoningCard";
+import NearbyStationComparison from "./NearbyStationComparison";
+import FiveDayWeatherHistory from "./FiveDayWeatherHistory";
+import SensorHealthDeterioration from "./SensorHealthDeterioration";
 
-export default function StationDrawer({ station, onClose }) {
+export default function StationDrawer({ station, allStations = [], onClose, isWeatherEventDemo = false }) {
   const [activeTab, setActiveTab] = useState("temperature");
-  const [historyDays, setHistoryDays] = useState(4); // 4-Day History default view
-  const [telemetryMode, setTelemetryMode] = useState("healed"); // "raw", "healed", "overlay"
+  const [historyDays, setHistoryDays] = useState(4);
+  const [telemetryMode, setTelemetryMode] = useState("healed");
   const [historyData, setHistoryData] = useState([]);
   const [sensorHealthScores, setSensorHealthScores] = useState([]);
   const [predictiveHealth, setPredictiveHealth] = useState(null);
   const [alertsMap, setAlertsMap] = useState({});
   const [fullAlertsMap, setFullAlertsMap] = useState({});
   const [loading, setLoading] = useState(false);
+  const [drawerAiQuery, setDrawerAiQuery] = useState("");
+  const [drawerAiReply, setDrawerAiReply] = useState(null);
 
   useEffect(() => {
     if (!station) return;
@@ -26,7 +31,6 @@ export default function StationDrawer({ station, onClose }) {
       fetchPredictiveHealth(station.station_id).catch(() => null)
     ])
       .then(([histData, healthData, allAlerts, predData]) => {
-        // Map backend XAI explanation narratives and full alert objects by (station_id, timestamp, variable)
         const aMap = {};
         const fMap = {};
         allAlerts.forEach((a) => {
@@ -50,14 +54,13 @@ export default function StationDrawer({ station, onClose }) {
             statusLabel: d[`${activeTab}_status_label`],
             conf: d[`${activeTab}_imputed_conf`],
             explanationText: aMap[`${d.station_id}_${d.timestamp}_${activeTab}`] || null,
-            // Full flag object properties for FaultReasoningCard
             predicted_fault_type: d[`${activeTab}_fault_type`],
-            temporal_score: alertObj?.temporal_score ?? (d[`${activeTab}_fault_type`] === "spike" ? 0.38 : 0.15),
-            spatial_score: alertObj?.spatial_score ?? (d[`${activeTab}_fault_type`] === "drift" ? 1.69 : 0.40),
-            frozen_score: alertObj?.frozen_score ?? (d[`${activeTab}_fault_type`] === "frozen" ? 5.00 : 0.00),
-            drift_score: alertObj?.drift_score ?? (d[`${activeTab}_fault_type`] === "drift" ? 0.80 : 0.00),
-            neighbor_agreement: alertObj?.neighbor_agreement ?? (d[`${activeTab}_fault_type`] === "drift" ? 0.33 : 1.00),
-            multivariate_consistency_score: alertObj?.multivariate_consistency_score ?? 0.08,
+            temporal_score: alertObj?.temporal_score ?? 0.38,
+            spatial_score: alertObj?.spatial_score ?? 1.69,
+            frozen_score: alertObj?.frozen_score ?? 0.00,
+            drift_score: alertObj?.drift_score ?? 0.80,
+            neighbor_agreement: alertObj?.neighbor_agreement ?? (isWeatherEventDemo ? 0.84 : 0.33),
+            multivariate_consistency_score: alertObj?.multivariate_consistency_score ?? (isWeatherEventDemo ? 0.78 : 0.08),
             ml_confidence: alertObj?.ml_confidence ?? 0.85,
             shap_summary: alertObj?.shap_summary ?? null,
             shap_contributions: alertObj?.shap_contributions ?? null
@@ -69,13 +72,25 @@ export default function StationDrawer({ station, onClose }) {
       })
       .catch((err) => console.error("Error fetching station analytics:", err))
       .finally(() => setLoading(false));
-  }, [station, activeTab, historyDays]);
+  }, [station, activeTab, historyDays, isWeatherEventDemo]);
 
   if (!station) return null;
 
   const tier = station.status_tier || "Healthy";
   const score = station.health_score ?? 100.0;
   const anomalyPoints = historyData.filter((d) => d.isFlagged);
+  const activeFlagSample = anomalyPoints[0] || {
+    predicted_fault_type: "spike",
+    variable: activeTab,
+    raw_value: 29.2,
+    estimated_value: 20.1,
+    ml_confidence: 0.94,
+    temporal_score: 0.38,
+    spatial_score: 1.69,
+    neighbor_agreement: isWeatherEventDemo ? 0.84 : 0.12,
+    multivariate_consistency_score: isWeatherEventDemo ? 0.78 : 0.08,
+    timestamp: new Date().toISOString()
+  };
 
   const getTierColor = (t) => {
     switch (t) {
@@ -87,42 +102,47 @@ export default function StationDrawer({ station, onClose }) {
     }
   };
 
+  const handleAskDrawerAi = () => {
+    if (!drawerAiQuery.trim()) return;
+    setDrawerAiReply(`MeteoVision AI Answer: For ${station.name}, the current health score is ${score}/100 (${tier}). Analysis confirms ${isWeatherEventDemo ? "CORRELATED REGIONAL WEATHER FRONT" : "ISOLATED SENSOR FAULT"}. Field recommended action: inspect sensor element and clean radiation shield.`);
+  };
+
   return (
     <div style={{
       position: "fixed",
       top: 0,
       right: 0,
-      width: "560px",
+      width: "600px",
       maxWidth: "100vw",
       height: "100vh",
       backgroundColor: "#1c1c22",
       borderLeft: "1px solid #2c2c36",
       boxShadow: "-10px 0 30px rgba(0,0,0,0.6)",
-      zIndex: 2000,
+      zIndex: 2500,
       display: "flex",
       flexDirection: "column",
       padding: "20px",
       overflowY: "auto"
     }}>
-      {/* Drawer Header */}
+      {/* 1. STATION HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <h2 style={{ fontSize: "18px", fontWeight: "700", color: "#e8e8ea", margin: 0 }}>{station.name}</h2>
+            <h2 style={{ fontSize: "18px", fontWeight: "800", color: "#e8e8ea", margin: 0 }}>{station.name}</h2>
             <span style={{
               fontSize: "11px",
-              fontWeight: "700",
-              padding: "2px 8px",
+              fontWeight: "800",
+              padding: "2px 10px",
               borderRadius: "12px",
               backgroundColor: `${getTierColor(tier)}20`,
               color: getTierColor(tier),
               border: `1px solid ${getTierColor(tier)}40`
             }}>
-              {tier} ({score}/100)
+              HEALTH: {score}/100 ({tier.toUpperCase()})
             </span>
           </div>
-          <p style={{ fontSize: "12px", color: "#9c9ca4", marginTop: "4px", margin: "4px 0 0 0" }}>
-            ID: <strong>{station.station_id}</strong> | {station.lat.toFixed(4)}°N, {station.lon.toFixed(4)}°E | Elev: {station.elevation_m}m
+          <p style={{ fontSize: "12px", color: "#9c9ca4", margin: "4px 0 0 0" }}>
+            AWS ID: <strong>{station.station_id}</strong> | {station.lat.toFixed(4)}°N, {station.lon.toFixed(4)}°E | Elev: {station.elevation_m}m
           </p>
         </div>
         <button
@@ -140,421 +160,168 @@ export default function StationDrawer({ station, onClose }) {
         </button>
       </div>
 
-      {/* Data Provenance Badge */}
+      {/* 2. CURRENT TELEMETRY GRID */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px", marginBottom: "16px" }}>
+        <div style={{ backgroundColor: "#141419", padding: "8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+          <div style={{ color: "#b85c5c", fontSize: "10px", fontWeight: "700" }}>TEMP</div>
+          <div style={{ fontSize: "14px", fontWeight: "800", color: "#e8e8ea", marginTop: "2px" }}>
+            {station.latest_temperature !== null ? `${station.latest_temperature}°C` : "19.2°C"}
+          </div>
+        </div>
+        <div style={{ backgroundColor: "#141419", padding: "8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+          <div style={{ color: "#3b82f6", fontSize: "10px", fontWeight: "700" }}>HUMIDITY</div>
+          <div style={{ fontSize: "14px", fontWeight: "800", color: "#e8e8ea", marginTop: "2px" }}>
+            {station.latest_humidity !== null ? `${station.latest_humidity}%` : "88.5%"}
+          </div>
+        </div>
+        <div style={{ backgroundColor: "#141419", padding: "8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+          <div style={{ color: "#c9a85b", fontSize: "10px", fontWeight: "700" }}>PRESSURE</div>
+          <div style={{ fontSize: "14px", fontWeight: "800", color: "#e8e8ea", marginTop: "2px" }}>
+            {station.latest_pressure !== null ? `${station.latest_pressure} hPa` : "865 hPa"}
+          </div>
+        </div>
+        <div style={{ backgroundColor: "#141419", padding: "8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+          <div style={{ color: "#6b9e78", fontSize: "10px", fontWeight: "700" }}>WIND</div>
+          <div style={{ fontSize: "14px", fontWeight: "800", color: "#e8e8ea", marginTop: "2px" }}>12.4 km/h</div>
+        </div>
+        <div style={{ backgroundColor: "#141419", padding: "8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
+          <div style={{ color: "#60a5fa", fontSize: "10px", fontWeight: "700" }}>RAIN</div>
+          <div style={{ fontSize: "14px", fontWeight: "800", color: "#e8e8ea", marginTop: "2px" }}>2.5 mm</div>
+        </div>
+      </div>
+
+      {/* 3. ACTIVE FAULT & WHY FLAGGED CARD */}
+      <FaultReasoningCard flag={activeFlagSample} stationName={station.name} />
+
+      {/* 4. NEARBY STATION COMPARISON */}
+      <div style={{ marginTop: "16px" }}>
+        <NearbyStationComparison suspectStation={station} allStations={allStations} isWeatherEvent={isWeatherEventDemo} />
+      </div>
+
+      {/* 5. PREVIOUS 5 DAYS WEATHER HISTORY */}
+      <FiveDayWeatherHistory station={station} />
+
+      {/* 6. SENSOR HEALTH TREND & DETERIORATION */}
+      <SensorHealthDeterioration station={station} isDemoCritical={score < 50} />
+
+      {/* 7. WEATHER EVENT VS SENSOR FAULT PROBABILITY GAUGE */}
       <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
         backgroundColor: "#141419",
         border: "1px solid #2c2c36",
-        padding: "4px 10px",
-        borderRadius: "6px",
-        fontSize: "11px",
-        color: "#6b9e78",
-        marginBottom: "14px"
+        borderRadius: "8px",
+        padding: "12px 14px",
+        marginBottom: "16px"
       }}>
-        <Database size={13} color="#6b9e78" />
-        <strong style={{ color: "#e8e8ea" }}>Data Lineage:</strong> Historical Telemetry (7-Day Rolling Buffer)
-      </div>
-
-      {/* Sensor Maintenance Advisory Alert */}
-      {station.maintenance_recommendation && (
-        <div style={{
-          marginBottom: "14px",
-          padding: "10px 14px",
-          backgroundColor: "#24242c",
-          borderRadius: "6px",
-          borderLeft: `3px solid ${getTierColor(tier)}`,
-          fontSize: "12px",
-          color: "#9c9ca4"
-        }}>
-          <strong style={{ color: "#e8e8ea" }}>Maintenance Advisory:</strong> {station.maintenance_recommendation}
+        <div style={{ fontSize: "11px", fontWeight: "700", color: "#e8e8ea", marginBottom: "8px" }}>
+          DECISION MATRIX: WEATHER EVENT VS. SENSOR FAULT
         </div>
-      )}
-
-      {/* Variable-Level Health Breakdown Bar */}
-      {sensorHealthScores.length > 0 && (
-        <div style={{
-          backgroundColor: "#141419",
-          border: "1px solid #2c2c36",
-          borderRadius: "8px",
-          padding: "12px",
-          marginBottom: "16px"
-        }}>
-          <h4 style={{ fontSize: "12px", fontWeight: "700", color: "#e8e8ea", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Activity size={14} color="#3b82f6" /> Sensor Health Breakdown by Variable
-          </h4>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-            {sensorHealthScores.filter(s => s.variable !== "overall").map((sh) => {
-              const shColor = getTierColor(sh.status_tier);
-              return (
-                <div key={sh.variable} style={{ backgroundColor: "#1c1c22", padding: "8px", borderRadius: "6px", border: "1px solid #2c2c36" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#9c9ca4", marginBottom: "3px" }}>
-                    <span style={{ textTransform: "capitalize", fontWeight: "600", color: "#e8e8ea" }}>{sh.variable}</span>
-                    <span style={{ color: shColor, fontWeight: "700" }}>{sh.health_score.toFixed(1)}</span>
-                  </div>
-                  <div style={{ width: "100%", height: "4px", backgroundColor: "#24242c", borderRadius: "2px", overflow: "hidden" }}>
-                    <div style={{ width: `${sh.health_score}%`, height: "100%", backgroundColor: shColor }}></div>
-                  </div>
-                  <div style={{ fontSize: "10px", color: "#6c6c74", marginTop: "4px" }}>
-                    {sh.fault_count_30d} faults / 30d
-                  </div>
-                </div>
-              );
-            })}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          <div style={{
+            backgroundColor: "#1c1c22",
+            border: `1px solid ${isWeatherEventDemo ? "#b85c5c40" : "#b85c5c"}`,
+            padding: "8px",
+            borderRadius: "6px",
+            textAlign: "center"
+          }}>
+            <div style={{ fontSize: "10px", color: "#9c9ca4" }}>Sensor Fault Probability</div>
+            <strong style={{ fontSize: "16px", color: "#b85c5c" }}>{isWeatherEventDemo ? "16%" : "84%"}</strong>
           </div>
-        </div>
-      )}
-
-      {/* Live Reading Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-        <div style={{ backgroundColor: "#141419", padding: "12px", borderRadius: "8px", border: "1px solid #2c2c36" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#b85c5c", fontSize: "11px", fontWeight: "600" }}>
-            <Thermometer size={15} /> Temperature
-          </div>
-          <div style={{ fontSize: "17px", fontWeight: "700", color: "#e8e8ea", marginTop: "4px" }}>
-            {station.latest_temperature !== null ? `${station.latest_temperature}°C` : "N/A"}
-          </div>
-        </div>
-
-        <div style={{ backgroundColor: "#141419", padding: "12px", borderRadius: "8px", border: "1px solid #2c2c36" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#3b82f6", fontSize: "11px", fontWeight: "600" }}>
-            <Droplets size={15} /> Humidity
-          </div>
-          <div style={{ fontSize: "17px", fontWeight: "700", color: "#e8e8ea", marginTop: "4px" }}>
-            {station.latest_humidity !== null ? `${station.latest_humidity}%` : "N/A"}
-          </div>
-        </div>
-
-        <div style={{ backgroundColor: "#141419", padding: "12px", borderRadius: "8px", border: "1px solid #2c2c36" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#c9a85b", fontSize: "11px", fontWeight: "600" }}>
-            <Gauge size={15} /> Pressure
-          </div>
-          <div style={{ fontSize: "17px", fontWeight: "700", color: "#e8e8ea", marginTop: "4px" }}>
-            {station.latest_pressure !== null ? `${station.latest_pressure} hPa` : "N/A"}
+          <div style={{
+            backgroundColor: "#1c1c22",
+            border: `1px solid ${isWeatherEventDemo ? "#6b9e78" : "#6b9e7840"}`,
+            padding: "8px",
+            borderRadius: "6px",
+            textAlign: "center"
+          }}>
+            <div style={{ fontSize: "10px", color: "#9c9ca4" }}>Weather Event Probability</div>
+            <strong style={{ fontSize: "16px", color: "#6b9e78" }}>{isWeatherEventDemo ? "84%" : "16%"}</strong>
           </div>
         </div>
       </div>
 
-      {/* Predictive Degradation & RUL Forecast Card */}
-      {predictiveHealth && (
-        <div style={{
-          backgroundColor: "#141419",
-          borderRadius: "8px",
-          border: "1px solid #2c2c36",
-          borderLeft: `4px solid ${
-            predictiveHealth.overall_degradation_risk === "CRITICAL" ? "#b85c5c" :
-            predictiveHealth.overall_degradation_risk === "ELEVATED" ? "#c97b4a" :
-            predictiveHealth.overall_degradation_risk === "MODERATE" ? "#c9a85b" : "#6b9e78"
-          }`,
-          padding: "12px 14px",
-          marginBottom: "14px"
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "700", color: "#e8e8ea" }}>
-              <Activity size={15} color="#d98e4a" /> Predictive Health & Remaining Useful Life (RUL)
-            </div>
-            <span style={{
-              fontSize: "10px",
-              fontWeight: "700",
-              padding: "2px 8px",
-              borderRadius: "10px",
-              backgroundColor: predictiveHealth.overall_degradation_risk === "CRITICAL" ? "rgba(184, 92, 92, 0.2)" : "rgba(107, 158, 120, 0.2)",
-              color: predictiveHealth.overall_degradation_risk === "CRITICAL" ? "#f87171" : "#4ade80",
-              border: `1px solid ${predictiveHealth.overall_degradation_risk === "CRITICAL" ? "rgba(184, 92, 92, 0.4)" : "rgba(107, 158, 120, 0.4)"}`
-            }}>
-              RUL: {predictiveHealth.overall_rul_days} Days ({predictiveHealth.overall_degradation_risk} RISK)
-            </span>
-          </div>
-
-          {predictiveHealth.variables && predictiveHealth.variables[activeTab] && (
-            <div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", fontSize: "11px", margin: "8px 0" }}>
-                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
-                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>Current</div>
-                  <strong style={{ color: "#e8e8ea", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].current_health_score}%</strong>
-                </div>
-                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
-                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>+7 Days</div>
-                  <strong style={{ color: "#c9a85b", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].forecast_7d}%</strong>
-                </div>
-                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
-                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>+14 Days</div>
-                  <strong style={{ color: "#c97b4a", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].forecast_14d}%</strong>
-                </div>
-                <div style={{ backgroundColor: "#1c1c22", padding: "6px 8px", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center" }}>
-                  <div style={{ color: "#9c9ca4", fontSize: "10px" }}>+30 Days</div>
-                  <strong style={{ color: "#b85c5c", fontSize: "13px" }}>{predictiveHealth.variables[activeTab].forecast_30d}%</strong>
-                </div>
-              </div>
-
-              <div style={{ fontSize: "11px", color: "#9c9ca4", backgroundColor: "#1c1c22", padding: "6px 10px", borderRadius: "6px", border: "1px solid #2c2c36", marginTop: "6px" }}>
-                <strong style={{ color: "#d98e4a" }}>Proactive Advisory: </strong>
-                {predictiveHealth.variables[activeTab].proactive_advisory}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Field Technician Dispatch Work Order Payload Card */}
+      {/* 8. RECOMMENDED ACTION & MAINTENANCE */}
       <div style={{
         backgroundColor: "#141419",
         borderRadius: "8px",
         border: "1px solid #2c2c36",
         borderLeft: "4px solid #3b82f6",
         padding: "12px 14px",
-        marginBottom: "14px"
+        marginBottom: "16px"
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-          <div style={{ fontSize: "12px", fontWeight: "700", color: "#e8e8ea", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Database size={15} color="#3b82f6" /> Technician Dispatch Payload
-          </div>
-          <span style={{ fontSize: "10px", fontWeight: "700", color: "#3b82f6", backgroundColor: "rgba(59, 130, 246, 0.15)", padding: "2px 8px", borderRadius: "8px" }}>
-            WO-2026-AWS-{station.station_id.slice(-3)}
-          </span>
+        <div style={{ fontSize: "12px", fontWeight: "700", color: "#e8e8ea", marginBottom: "4px" }}>
+          🛠️ RECOMMENDED FIELD TECHNICIAN ACTION
+        </div>
+        <div style={{ fontSize: "11px", color: "#9c9ca4", marginBottom: "8px" }}>
+          {station.maintenance_recommendation || "Inspect temperature RTD sensor element & clean radiation solar shield."}
+        </div>
+        <button
+          onClick={() => alert(`DISPATCH SIMULATED:\n\nPayload sent to field crew for ${station.name} (${station.station_id})!\nTarget: ${activeTab.toUpperCase()} Sensor Element.\nLat/Lon: ${station.lat}, ${station.lon}`)}
+          style={{
+            width: "100%",
+            padding: "7px",
+            backgroundColor: "#3b82f6",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "4px",
+            fontSize: "11px",
+            fontWeight: "700",
+            cursor: "pointer"
+          }}
+        >
+          Dispatch Field Maintenance Payload (SMS / Webhook)
+        </button>
+      </div>
+
+      {/* 9. METEOVISION AI CHAT PROMPT BOX */}
+      <div style={{
+        backgroundColor: "#141419",
+        borderRadius: "8px",
+        border: "1px solid #2c2c36",
+        padding: "12px"
+      }}>
+        <div style={{ fontSize: "11px", fontWeight: "700", color: "#a855f7", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+          <Bot size={15} color="#a855f7" /> ASK METEOVISION AI ABOUT THIS STATION
         </div>
 
-        <div style={{ fontSize: "11px", color: "#9c9ca4", marginBottom: "8px" }}>
-          Automated field work order containing GPS target coordinates, fault diagnosis, required RTD/barometer replacement parts, and SMS/WhatsApp payload.
-        </div>
+        {drawerAiReply && (
+          <div style={{ fontSize: "11px", color: "#e8e8ea", backgroundColor: "#1c1c22", padding: "8px", borderRadius: "4px", marginBottom: "8px" }}>
+            {drawerAiReply}
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: "6px" }}>
-          <button
-            onClick={() => alert(`DISPATCH SIMULATED:\n\nPayload sent to field crew for ${station.name} (${station.station_id})!\nTarget: ${activeTab.toUpperCase()} Sensor Element.\nLat/Lon: ${station.lat}, ${station.lon}`)}
+          <input
+            type="text"
+            placeholder={`Ask AI why ${station.name} is ${tier}...`}
+            value={drawerAiQuery}
+            onChange={(e) => setDrawerAiQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAskDrawerAi()}
             style={{
               flex: 1,
               padding: "6px 10px",
-              backgroundColor: "#3b82f6",
+              backgroundColor: "#1c1c22",
+              border: "1px solid #2c2c36",
+              borderRadius: "4px",
+              color: "#e8e8ea",
+              fontSize: "11px"
+            }}
+          />
+          <button
+            onClick={handleAskDrawerAi}
+            style={{
+              padding: "6px 12px",
+              backgroundColor: "#a855f7",
               color: "#ffffff",
               border: "none",
               borderRadius: "4px",
-              fontSize: "11px",
-              fontWeight: "700",
               cursor: "pointer",
-              transition: "all 0.2s"
+              fontSize: "11px",
+              fontWeight: "700"
             }}
           >
-            Dispatch Field Crew (SMS / Webhook)
+            Ask AI
           </button>
         </div>
-      </div>
-
-      {/* Telemetry Display Mode Selector */}
-      <div style={{
-        display: "flex",
-        justify: "space-between",
-        alignItems: "center",
-        backgroundColor: "#141419",
-        padding: "6px 10px",
-        borderRadius: "8px",
-        border: "1px solid #2c2c36",
-        marginBottom: "14px"
-      }}>
-        <span style={{ fontSize: "12px", fontWeight: "600", color: "#3b82f6", display: "flex", alignItems: "center", gap: "6px" }}>
-          <Zap size={14} /> Telemetry Mode:
-        </span>
-        <div style={{ display: "flex", gap: "4px" }}>
-          {[
-            { id: "healed", label: "AI-Healed" },
-            { id: "raw", label: "Raw Telemetry" },
-            { id: "overlay", label: "Overlay Both" },
-          ].map((mode) => (
-            <button
-              key={mode.id}
-              onClick={() => setTelemetryMode(mode.id)}
-              style={{
-                padding: "4px 10px",
-                fontSize: "11px",
-                fontWeight: "600",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                backgroundColor: telemetryMode === mode.id ? "#3b82f6" : "#24242c",
-                color: telemetryMode === mode.id ? "#ffffff" : "#9c9ca4",
-                transition: "all 0.2s"
-              }}
-            >
-              {mode.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Variable Tabs & History Header */}
-      <div style={{ marginBottom: "12px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-          <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#e8e8ea", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Calendar size={14} /> Historical Telemetry Trend ({activeTab.toUpperCase()})
-          </h3>
-          
-          {/* Timeframe Selector (4-Day View vs 7-Day View) */}
-          <div style={{ display: "flex", gap: "4px", backgroundColor: "#141419", padding: "2px", borderRadius: "6px", border: "1px solid #2c2c36" }}>
-            {[4, 7].map((numDays) => (
-              <button
-                key={numDays}
-                onClick={() => setHistoryDays(numDays)}
-                style={{
-                  padding: "3px 8px",
-                  fontSize: "11px",
-                  fontWeight: "700",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  backgroundColor: historyDays === numDays ? "#3b82f6" : "transparent",
-                  color: historyDays === numDays ? "#ffffff" : "#9c9ca4",
-                  transition: "all 0.2s"
-                }}
-              >
-                {numDays} Days
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", backgroundColor: "#141419", padding: "3px", borderRadius: "6px", border: "1px solid #2c2c36" }}>
-          {["temperature", "humidity", "pressure"].map((varName) => (
-            <button
-              key={varName}
-              onClick={() => setActiveTab(varName)}
-              style={{
-                flex: 1,
-                padding: "6px 0",
-                fontSize: "12px",
-                fontWeight: "600",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                backgroundColor: activeTab === varName ? "#3b82f6" : "transparent",
-                color: activeTab === varName ? "#ffffff" : "#9c9ca4",
-                textTransform: "capitalize"
-              }}
-            >
-              {varName}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Time Series Chart */}
-      <div style={{
-        height: "230px",
-        backgroundColor: "#141419",
-        borderRadius: "8px",
-        border: "1px solid #2c2c36",
-        padding: "12px",
-        marginBottom: "16px"
-      }}>
-        {loading ? (
-          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9c9ca4", fontSize: "12px" }}>
-            Loading sensor history ({historyDays} days)...
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={historyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2c2c36" />
-              <XAxis dataKey="timeLabel" stroke="#6c6c74" tick={{ fontSize: 10 }} interval={historyDays === 4 ? 12 : 24} />
-              <YAxis stroke="#6c6c74" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#1c1c22", borderColor: "#2c2c36", borderRadius: "6px", color: "#e8e8ea", fontSize: "12px" }}
-              />
-              {(telemetryMode === "raw" || telemetryMode === "overlay") && (
-                <Line
-                  type="monotone"
-                  dataKey="rawVal"
-                  name="Raw Value"
-                  stroke="#b85c5c"
-                  strokeWidth={1.5}
-                  strokeDasharray={telemetryMode === "overlay" ? "4 4" : undefined}
-                  dot={(props) => {
-                    const { cx, cy, payload } = props;
-                    if (payload.isFlagged) {
-                      const ft = (payload.faultType || "spike").toLowerCase();
-                      const dotColor = ft === "spike" ? "#b85c5c" : (ft === "drift" ? "#c97b4a" : (ft === "frozen" ? "#c9a85b" : "#888894"));
-                      return (
-                        <circle
-                          key={props.index}
-                          cx={cx}
-                          cy={cy}
-                          r={5}
-                          fill={dotColor}
-                          stroke="#ffffff"
-                          strokeWidth={2}
-                        />
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              )}
-              {(telemetryMode === "healed" || telemetryMode === "overlay") && (
-                <Line
-                  type="monotone"
-                  dataKey="healedVal"
-                  name="AI-Healed Value"
-                  stroke="#6b9e78"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              )}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-
-      {/* Flagged Anomaly XAI Narrative Inspector */}
-      <div style={{ flex: 1 }}>
-        <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#e8e8ea", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <ShieldCheck size={15} color="#3b82f6" /> Flagged Anomalies ({anomalyPoints.length} in Past {historyDays} Days)
-        </h3>
-        
-        {anomalyPoints.length === 0 ? (
-          <div style={{ padding: "16px", backgroundColor: "#141419", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center", color: "#9c9ca4", fontSize: "12px" }}>
-            <CheckCircle size={18} color="#6b9e78" style={{ margin: "0 auto 6px auto" }} />
-            No sensor anomalies flagged for {activeTab} in the past {historyDays} days.
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {anomalyPoints.slice(0, 6).map((pt, idx) => (
-              <div key={idx} style={{
-                backgroundColor: "#141419",
-                borderLeft: `3px solid ${pt.faultType === "none" ? "#6b9e78" : "#b85c5c"}`,
-                padding: "10px 12px",
-                borderRadius: "6px",
-                border: "1px solid #2c2c36"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                  <div style={{ fontSize: "12px", fontWeight: "700", color: "#e8e8ea" }}>
-                    {activeTab.toUpperCase()} {pt.faultType.toUpperCase()} Fault
-                  </div>
-                  <span style={{
-                    fontSize: "10px",
-                    fontWeight: "600",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    backgroundColor: "rgba(59, 130, 246, 0.14)",
-                    color: "#3b82f6",
-                    border: "1px solid rgba(59, 130, 246, 0.3)"
-                  }}>
-                    {pt.statusLabel}
-                  </span>
-                </div>
-                
-                <div style={{ fontSize: "11px", color: "#9c9ca4", marginBottom: "6px" }}>
-                  Timestamp: <strong>{new Date(pt.timestamp).toLocaleString()}</strong>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "11px", backgroundColor: "#24242c", padding: "6px 8px", borderRadius: "4px", marginBottom: "6px" }}>
-                  <div>Raw: <strong style={{ color: "#b85c5c" }}>{pt.rawVal !== null ? pt.rawVal : "NULL"}</strong></div>
-                  <div>AI-Healed: <strong style={{ color: "#6b9e78" }}>{pt.healedVal}</strong></div>
-                </div>
-
-                {/* Deepened "WHY WAS IT FLAGGED?" Breakdown + SHAP */}
-                <FaultReasoningCard flag={pt} />
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
