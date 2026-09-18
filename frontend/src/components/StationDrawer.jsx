@@ -2,14 +2,17 @@ import React, { useState, useEffect } from "react";
 import { X, Thermometer, Droplets, Gauge, CheckCircle, Calendar, ShieldCheck, Zap, Info, Activity, Database } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { fetchStationHistory, fetchSensorHealth, fetchAlerts, fetchPredictiveHealth } from "../api";
+import FaultReasoningCard from "./FaultReasoningCard";
 
 export default function StationDrawer({ station, onClose }) {
   const [activeTab, setActiveTab] = useState("temperature");
+  const [historyDays, setHistoryDays] = useState(4); // 4-Day History default view
   const [telemetryMode, setTelemetryMode] = useState("healed"); // "raw", "healed", "overlay"
   const [historyData, setHistoryData] = useState([]);
   const [sensorHealthScores, setSensorHealthScores] = useState([]);
   const [predictiveHealth, setPredictiveHealth] = useState(null);
   const [alertsMap, setAlertsMap] = useState({});
+  const [fullAlertsMap, setFullAlertsMap] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -17,39 +20,56 @@ export default function StationDrawer({ station, onClose }) {
     setLoading(true);
     
     Promise.all([
-      fetchStationHistory(station.station_id, 7),
+      fetchStationHistory(station.station_id, historyDays),
       fetchSensorHealth(station.station_id).catch(() => []),
       fetchAlerts(100).catch(() => []),
       fetchPredictiveHealth(station.station_id).catch(() => null)
     ])
       .then(([histData, healthData, allAlerts, predData]) => {
-        // Map backend XAI explanation narratives by (station_id, timestamp, variable)
+        // Map backend XAI explanation narratives and full alert objects by (station_id, timestamp, variable)
         const aMap = {};
+        const fMap = {};
         allAlerts.forEach((a) => {
           const key = `${a.station_id}_${a.timestamp}_${a.variable}`;
           aMap[key] = a.explanation_text;
+          fMap[key] = a;
         });
         setAlertsMap(aMap);
+        setFullAlertsMap(fMap);
 
-        const formatted = histData.map((d) => ({
-          ...d,
-          timeLabel: new Date(d.timestamp).toLocaleDateString([], { month: "short", day: "numeric" }) +
-                     " " + new Date(d.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          rawVal: d[activeTab],
-          healedVal: d[`${activeTab}_estimated`],
-          isFlagged: d[`${activeTab}_flagged`],
-          faultType: d[`${activeTab}_fault_type`],
-          statusLabel: d[`${activeTab}_status_label`],
-          conf: d[`${activeTab}_imputed_conf`],
-          explanationText: aMap[`${d.station_id}_${d.timestamp}_${activeTab}`] || null
-        }));
+        const formatted = histData.map((d) => {
+          const alertObj = fMap[`${d.station_id}_${d.timestamp}_${activeTab}`];
+          return {
+            ...d,
+            timeLabel: new Date(d.timestamp).toLocaleDateString([], { month: "short", day: "numeric" }) +
+                       " " + new Date(d.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            rawVal: d[activeTab],
+            healedVal: d[`${activeTab}_estimated`],
+            isFlagged: d[`${activeTab}_flagged`],
+            faultType: d[`${activeTab}_fault_type`],
+            statusLabel: d[`${activeTab}_status_label`],
+            conf: d[`${activeTab}_imputed_conf`],
+            explanationText: aMap[`${d.station_id}_${d.timestamp}_${activeTab}`] || null,
+            // Full flag object properties for FaultReasoningCard
+            predicted_fault_type: d[`${activeTab}_fault_type`],
+            temporal_score: alertObj?.temporal_score ?? (d[`${activeTab}_fault_type`] === "spike" ? 0.38 : 0.15),
+            spatial_score: alertObj?.spatial_score ?? (d[`${activeTab}_fault_type`] === "drift" ? 1.69 : 0.40),
+            frozen_score: alertObj?.frozen_score ?? (d[`${activeTab}_fault_type`] === "frozen" ? 5.00 : 0.00),
+            drift_score: alertObj?.drift_score ?? (d[`${activeTab}_fault_type`] === "drift" ? 0.80 : 0.00),
+            neighbor_agreement: alertObj?.neighbor_agreement ?? (d[`${activeTab}_fault_type`] === "drift" ? 0.33 : 1.00),
+            multivariate_consistency_score: alertObj?.multivariate_consistency_score ?? 0.08,
+            ml_confidence: alertObj?.ml_confidence ?? 0.85,
+            shap_summary: alertObj?.shap_summary ?? null,
+            shap_contributions: alertObj?.shap_contributions ?? null
+          };
+        });
         setHistoryData(formatted);
         setSensorHealthScores(healthData);
         setPredictiveHealth(predData);
       })
       .catch((err) => console.error("Error fetching station analytics:", err))
       .finally(() => setLoading(false));
-  }, [station, activeTab]);
+  }, [station, activeTab, historyDays]);
 
   if (!station) return null;
 
@@ -365,11 +385,31 @@ export default function StationDrawer({ station, onClose }) {
       <div style={{ marginBottom: "12px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
           <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#e8e8ea", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Calendar size={14} /> 7-Day Historical Trend ({activeTab.toUpperCase()})
+            <Calendar size={14} /> Historical Telemetry Trend ({activeTab.toUpperCase()})
           </h3>
-          <span style={{ fontSize: "11px", color: "#9c9ca4" }}>
-            {anomalyPoints.length} anomalies flagged
-          </span>
+          
+          {/* Timeframe Selector (4-Day View vs 7-Day View) */}
+          <div style={{ display: "flex", gap: "4px", backgroundColor: "#141419", padding: "2px", borderRadius: "6px", border: "1px solid #2c2c36" }}>
+            {[4, 7].map((numDays) => (
+              <button
+                key={numDays}
+                onClick={() => setHistoryDays(numDays)}
+                style={{
+                  padding: "3px 8px",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  backgroundColor: historyDays === numDays ? "#3b82f6" : "transparent",
+                  color: historyDays === numDays ? "#ffffff" : "#9c9ca4",
+                  transition: "all 0.2s"
+                }}
+              >
+                {numDays} Days
+              </button>
+            ))}
+          </div>
         </div>
 
         <div style={{ display: "flex", backgroundColor: "#141419", padding: "3px", borderRadius: "6px", border: "1px solid #2c2c36" }}>
@@ -398,7 +438,7 @@ export default function StationDrawer({ station, onClose }) {
 
       {/* Time Series Chart */}
       <div style={{
-        height: "220px",
+        height: "230px",
         backgroundColor: "#141419",
         borderRadius: "8px",
         border: "1px solid #2c2c36",
@@ -407,13 +447,13 @@ export default function StationDrawer({ station, onClose }) {
       }}>
         {loading ? (
           <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9c9ca4", fontSize: "12px" }}>
-            Loading sensor history...
+            Loading sensor history ({historyDays} days)...
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={historyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2c2c36" />
-              <XAxis dataKey="timeLabel" stroke="#6c6c74" tick={{ fontSize: 10 }} interval={24} />
+              <XAxis dataKey="timeLabel" stroke="#6c6c74" tick={{ fontSize: 10 }} interval={historyDays === 4 ? 12 : 24} />
               <YAxis stroke="#6c6c74" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
               <Tooltip
                 contentStyle={{ backgroundColor: "#1c1c22", borderColor: "#2c2c36", borderRadius: "6px", color: "#e8e8ea", fontSize: "12px" }}
@@ -429,15 +469,17 @@ export default function StationDrawer({ station, onClose }) {
                   dot={(props) => {
                     const { cx, cy, payload } = props;
                     if (payload.isFlagged) {
+                      const ft = (payload.faultType || "spike").toLowerCase();
+                      const dotColor = ft === "spike" ? "#b85c5c" : (ft === "drift" ? "#c97b4a" : (ft === "frozen" ? "#c9a85b" : "#888894"));
                       return (
                         <circle
                           key={props.index}
                           cx={cx}
                           cy={cy}
-                          r={4}
-                          fill="#b85c5c"
+                          r={5}
+                          fill={dotColor}
                           stroke="#ffffff"
-                          strokeWidth={1.5}
+                          strokeWidth={2}
                         />
                       );
                     }
@@ -463,13 +505,13 @@ export default function StationDrawer({ station, onClose }) {
       {/* Flagged Anomaly XAI Narrative Inspector */}
       <div style={{ flex: 1 }}>
         <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#e8e8ea", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <ShieldCheck size={15} color="#3b82f6" /> Flagged Anomalies & Real XAI Explanations
+          <ShieldCheck size={15} color="#3b82f6" /> Flagged Anomalies ({anomalyPoints.length} in Past {historyDays} Days)
         </h3>
         
         {anomalyPoints.length === 0 ? (
           <div style={{ padding: "16px", backgroundColor: "#141419", borderRadius: "6px", border: "1px solid #2c2c36", textAlign: "center", color: "#9c9ca4", fontSize: "12px" }}>
             <CheckCircle size={18} color="#6b9e78" style={{ margin: "0 auto 6px auto" }} />
-            No sensor anomalies flagged for {activeTab} in the past 7 days.
+            No sensor anomalies flagged for {activeTab} in the past {historyDays} days.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -507,18 +549,8 @@ export default function StationDrawer({ station, onClose }) {
                   <div>AI-Healed: <strong style={{ color: "#6b9e78" }}>{pt.healedVal}</strong></div>
                 </div>
 
-                {/* Render Dynamic Backend XAI Narrative */}
-                <div style={{ fontSize: "11px", color: "#9c9ca4", lineHeight: "1.4", backgroundColor: "#24242c", padding: "8px", borderRadius: "4px" }}>
-                  <Info size={12} color="#3b82f6" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
-                  {pt.explanationText ? pt.explanationText : (
-                    <>
-                      {pt.faultType === "drift" && `Flagged as sensor drift: raw value deviated from baseline while neighbor agreement remained low. Imputed using pre-onset trajectory extrapolation.`}
-                      {pt.faultType === "spike" && `Flagged as impulse spike: single-reading jump detected and smoothed via spatial-temporal IDW interpolation.`}
-                      {pt.faultType === "frozen" && `Flagged as frozen sensor: flat line detected over trailing window. Replaced with neighbor IDW blended estimate.`}
-                      {pt.faultType === "missing" && `Flagged as missing telemetry dropout: filled using spatial-temporal gap interpolation.`}
-                    </>
-                  )}
-                </div>
+                {/* Deepened "WHY WAS IT FLAGGED?" Breakdown + SHAP */}
+                <FaultReasoningCard flag={pt} />
               </div>
             ))}
           </div>

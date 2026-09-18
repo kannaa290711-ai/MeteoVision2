@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AlertCircle, Search, Info, Cpu, Layers, Activity, TrendingUp } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import FaultReasoningCard from "./FaultReasoningCard";
 
 export default function AlertFeed({ alerts = [], onSelectStation }) {
   const [filterVar, setFilterVar] = useState("ALL");
@@ -170,40 +171,8 @@ export default function AlertFeed({ alerts = [], onSelectStation }) {
                   </span>
                 </div>
 
-                {/* XAI Narrative Summary */}
-                {alert.explanation_text && (
-                  <div style={{
-                    fontSize: "11px",
-                    color: "#9c9ca4",
-                    lineHeight: "1.4",
-                    backgroundColor: "#24242c",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    marginTop: "6px"
-                  }}>
-                    <Info size={12} color="#3b82f6" style={{ display: "inline", marginRight: "4px", verticalAlign: "middle" }} />
-                    {alert.explanation_text}
-                  </div>
-                )}
-
-                {/* SHAP Feature Importance Attribution */}
-                {alert.shap_summary && (
-                  <div style={{
-                    fontSize: "10px",
-                    color: "#3b82f6",
-                    backgroundColor: "rgba(59, 130, 246, 0.1)",
-                    border: "1px solid rgba(59, 130, 246, 0.25)",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    marginTop: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px"
-                  }}>
-                    <Cpu size={12} color="#3b82f6" />
-                    <strong>SHAP Attribution:</strong> {alert.shap_summary}
-                  </div>
-                )}
+                {/* Deepened "WHY WAS IT FLAGGED?" Breakdown + SHAP */}
+                <FaultReasoningCard flag={alert} />
 
                 {/* Multivariate Consistency Score Tag */}
                 {mvScorePct !== null && (
