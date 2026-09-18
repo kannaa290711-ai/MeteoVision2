@@ -14,6 +14,7 @@ import MeteoVisionAIBot from "./components/MeteoVisionAIBot";
 import NearbyStationComparison from "./components/NearbyStationComparison";
 import FiveDayWeatherHistory from "./components/FiveDayWeatherHistory";
 import SensorHealthDeterioration from "./components/SensorHealthDeterioration";
+import FaultReasoningCard from "./components/FaultReasoningCard";
 import { fetchStations, fetchAlerts, fetchMetrics, subscribeTelemetryStream } from "./api";
 
 const FALLBACK_STATIONS = [
@@ -73,7 +74,7 @@ export default function App() {
   const [stations, setStations] = useState(FALLBACK_STATIONS);
   const [alerts, setAlerts] = useState(FALLBACK_ALERTS);
   const [metrics, setMetrics] = useState(FALLBACK_METRICS);
-  const [selectedStationId, setSelectedStationId] = useState(null);
+  const [selectedStationId, setSelectedStationId] = useState(null); // Default NULL so drawer is CLOSED until clicked
   const [loading, setLoading] = useState(false);
   const [isDemoActive, setIsDemoActive] = useState(true);
   const [activeScenario, setActiveScenario] = useState("spike");
@@ -164,11 +165,12 @@ export default function App() {
   };
 
   const activeAnomaliesCount = stations.filter((s) => s.status === "ANOMALY").length;
-  const selectedStation = stations.find((s) => s.station_id === selectedStationId) || stations[1];
+  // ONLY set selectedStation if selectedStationId is explicitly set!
+  const selectedStation = selectedStationId ? stations.find((s) => s.station_id === selectedStationId) : null;
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#141419", display: "flex", color: "#e8e8ea" }}>
-      {/* 1. Left Collapsible Sidebar */}
+      {/* 1. Left Collapsible Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
@@ -178,14 +180,14 @@ export default function App() {
 
       {/* Main Workspace Right Area */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflowX: "hidden" }}>
-        {/* Top Navbar */}
+        {/* Top Clean Navbar */}
         <Navbar
           activeAnomaliesCount={activeAnomaliesCount}
           activeTab={activeTab}
           onSelectTab={(tab) => setActiveTab(tab)}
         />
 
-        {/* SIH Demo Mode Control Header */}
+        {/* SIH Demo Mode Control Header Bar */}
         {isDemoActive && (
           <DemoControlBar
             activeScenario={activeScenario}
@@ -194,25 +196,71 @@ export default function App() {
           />
         )}
 
-        {/* View Switcher Router */}
+        {/* View Router */}
         <main style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-          {activeTab === "alerts-center" ? (
+          {activeTab === "map" ? (
+            <div style={{ flex: 1, minHeight: "650px", borderRadius: "10px", overflow: "hidden", border: "1px solid #2c2c36" }}>
+              <MapView stations={stations} selectedStationId={selectedStationId} onSelectStation={(id) => setSelectedStationId(id)} />
+            </div>
+          ) : activeTab === "stations" ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px" }}>
+              {stations.map((st) => (
+                <div
+                  key={st.station_id}
+                  onClick={() => setSelectedStationId(st.station_id)}
+                  style={{
+                    backgroundColor: "#1c1c22",
+                    border: `1px solid ${st.status === "ANOMALY" ? "#b85c5c" : "#2c2c36"}`,
+                    borderRadius: "8px",
+                    padding: "14px",
+                    cursor: "pointer"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: "14px", color: "#e8e8ea", fontWeight: "700" }}>{st.name}</h4>
+                      <span style={{ fontSize: "11px", color: "#9c9ca4" }}>ID: {st.station_id}</span>
+                    </div>
+                    <span style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: st.status === "ANOMALY" ? "rgba(184, 92, 92, 0.2)" : "rgba(107, 158, 120, 0.2)",
+                      color: st.status === "ANOMALY" ? "#f87171" : "#6b9e78"
+                    }}>
+                      HEALTH: {st.health_score ?? 100}
+                    </span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px", fontSize: "11px", backgroundColor: "#141419", padding: "8px", borderRadius: "6px" }}>
+                    <div>Temp: <strong style={{ color: "#e8e8ea" }}>{st.latest_temperature ?? "19.2"}°C</strong></div>
+                    <div>Hum: <strong style={{ color: "#e8e8ea" }}>{st.latest_humidity ?? "88"}%</strong></div>
+                    <div>Press: <strong style={{ color: "#e8e8ea" }}>{st.latest_pressure ?? "865"}</strong></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : activeTab === "anomalies" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <AlertFeed alerts={alerts} onSelectStation={(id) => setSelectedStationId(id)} />
+            </div>
+          ) : activeTab === "alerts-center" ? (
             <DisasterAlertCenter stations={stations} />
           ) : activeTab === "ai-bot" ? (
-            <MeteoVisionAIBot selectedStation={selectedStation} stations={stations} activeScenario={activeScenario} />
+            <MeteoVisionAIBot selectedStation={selectedStation || stations[1]} stations={stations} activeScenario={activeScenario} />
           ) : activeTab === "nearby-analysis" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <NearbyStationComparison suspectStation={selectedStation} allStations={stations} isWeatherEvent={isWeatherEventDemo} />
-              <FiveDayWeatherHistory station={selectedStation} />
+              <NearbyStationComparison suspectStation={selectedStation || stations[1]} allStations={stations} isWeatherEvent={isWeatherEventDemo} />
+              <FiveDayWeatherHistory station={selectedStation || stations[1]} />
             </div>
           ) : activeTab === "sensor-health" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <SensorHealthDeterioration station={selectedStation} isDemoCritical={selectedStation.health_score < 50} />
+              <SensorHealthDeterioration station={selectedStation || stations[1]} isDemoCritical={(selectedStation || stations[1]).health_score < 50} />
               <MetricsCard metrics={metrics} />
             </div>
           ) : activeTab === "analytics" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <FiveDayWeatherHistory station={selectedStation} />
+              <FiveDayWeatherHistory station={selectedStation || stations[1]} />
               <MetricsCard metrics={metrics} />
             </div>
           ) : activeTab === "weather-risk" ? (
@@ -220,9 +268,8 @@ export default function App() {
           ) : activeTab === "roadmap" || activeTab === "settings-demo" ? (
             <FutureVisionView />
           ) : (
-            /* Live Dashboard & Map Default Workspace */
+            /* Live Dashboard Workspace */
             <div style={{ display: "flex", flexDirection: "column", gap: "16px", flex: 1 }}>
-              <UserJourneyBanner />
               <MetricsCard metrics={metrics} />
 
               <div style={{
@@ -247,8 +294,8 @@ export default function App() {
         </main>
       </div>
 
-      {/* Station Analytics Side Drawer */}
-      {selectedStation && (activeTab === "dashboard" || activeTab === "map" || activeTab === "stations" || activeTab === "anomalies") && (
+      {/* Station Analytics Side Drawer — ONLY opens when selectedStation is non-null! */}
+      {selectedStation && (
         <StationDrawer
           station={selectedStation}
           allStations={stations}

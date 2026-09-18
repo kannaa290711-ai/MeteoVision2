@@ -55,78 +55,7 @@ export default function Navbar({ activeAnomaliesCount = 0, activeTab = "dashboar
         </div>
       </div>
 
-      {/* Center View Switcher Tabs */}
-      <div style={{
-        display: "flex",
-        backgroundColor: "#141419",
-        padding: "3px",
-        borderRadius: "8px",
-        border: "1px solid #2c2c36",
-        gap: "4px"
-      }}>
-        <button
-          onClick={() => onSelectTab && onSelectTab("dashboard")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 14px",
-            fontSize: "12px",
-            fontWeight: "600",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            backgroundColor: activeTab === "dashboard" ? "#3b82f6" : "transparent",
-            color: activeTab === "dashboard" ? "#ffffff" : "#9c9ca4",
-            transition: "all 0.2s"
-          }}
-        >
-          <LayoutDashboard size={15} />
-          <span>Live Sentinel Dashboard</span>
-        </button>
 
-        <button
-          onClick={() => onSelectTab && onSelectTab("weather-risk")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 14px",
-            fontSize: "12px",
-            fontWeight: "600",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            backgroundColor: activeTab === "weather-risk" ? "#2563eb" : "transparent",
-            color: activeTab === "weather-risk" ? "#ffffff" : "#9c9ca4",
-            transition: "all 0.2s"
-          }}
-        >
-          <CloudRain size={15} />
-          <span>Weather Patterns & Risk</span>
-        </button>
-
-        <button
-          onClick={() => onSelectTab && onSelectTab("roadmap")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 14px",
-            fontSize: "12px",
-            fontWeight: "600",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            backgroundColor: activeTab === "roadmap" ? "#1d4ed8" : "transparent",
-            color: activeTab === "roadmap" ? "#ffffff" : "#9c9ca4",
-            transition: "all 0.2s"
-          }}
-        >
-          <Sparkles size={15} />
-          <span>Future Vision & Roadmap</span>
-        </button>
-      </div>
 
       {/* System Status Indicators */}
       <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
